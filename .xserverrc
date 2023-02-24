@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/bin/X -quiet -ardelay 200 -arinterval 16 -nolisten tcp "$@" vt$XDG_VTNR

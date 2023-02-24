@@ -1,0 +1,11 @@
+CC=gcc
+CFLAGS=-Wall -Wextra -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wstrict-prototypes -Wwrite-strings -Wswitch-default -Wswitch-enum -Wformat=2 -Wbad-function-cast -Wstrict-overflow=4 -Wconversion -Wsign-conversion -Winline -Wfloat-equal -Wundef -Wnested-externs -Wredundant-decls -g -std=c11 -pedantic
+
+main:
+	$(CC) $(CFLAGS) $(EXTRA) main.c
+
+release:
+	$(CC) -std=c11 -pedantic -O3 -DNDEBUG $(EXTRA) main.c
+
+clean:
+	rm -f a.out
