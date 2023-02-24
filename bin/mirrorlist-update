@@ -1,0 +1,10 @@
+#!/bin/dash
+
+if [ $(id -u) -ne 0 ]; then
+    echo "$(basename $0): must be root"
+    exit 1
+fi
+
+mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
+
+reflector --country PL,DE,GB,FR,US --latest 6 --sort rate --protocol https --save /etc/pacman.d/mirrorlist

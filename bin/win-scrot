@@ -1,0 +1,12 @@
+#!/bin/dash
+
+SCROTDIR="$(xdg-user-dir PICTURES)/Scrots"
+
+mkdir -p $SCROTDIR
+cd $SCROTDIR
+
+if pidof unclutter >/dev/null; then
+    xdotool mousemove_relative --sync 10 0
+fi
+
+scrot --select --freeze --exec 'sxiv -b -g $wx$h $f'
