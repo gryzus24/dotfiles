@@ -1,17 +1,8 @@
 configuration {
   modes: "combi";
   font: "Source Code Pro 12";
-  disable-history: false;
   sort: true;
   combi-modes: "run,window";
   matching: "prefix";
-  timeout {
-      action: "kb-cancel";
-      delay:  0;
-  }
-  filebrowser {
-      directories-first: true;
-      sorting-method:    "name";
-  }
 }
 @theme "glue_pro_blue"
