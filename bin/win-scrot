@@ -2,11 +2,13 @@
 
 SCROTDIR="$(xdg-user-dir PICTURES)/Scrots"
 
-mkdir -p $SCROTDIR
-cd $SCROTDIR
+mkdir -p "$SCROTDIR"
+cd "$SCROTDIR" || exit 1
 
 if pidof unclutter >/dev/null; then
-    xdotool mousemove_relative --sync 10 0
+	xdotool mousemove_relative --sync 10 0
 fi
 
 scrot --select --freeze --exec 'sxiv -b -g $wx$h $f'
+
+# vim: ts=4:sw=4:noet

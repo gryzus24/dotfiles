@@ -1,0 +1,17 @@
+#!/bin/dash
+
+exec 3<&0
+git ls-files | while read -r file; do
+	home_file="$HOME/$file"
+	diff -q "$home_file" "$file" >/dev/null && continue
+
+	printf '%s	%s\n' "$home_file" "$file"
+	printf 'Open in vimdiff [Y/n]: ' >&2
+	read -r ans <&3
+	if [ -z "$ans" ] || [ "$ans" = 'y' ] || [ "$ans" = 'Y' ]; then
+		<&3 vimdiff "$home_file" "$file"
+	fi
+done
+exec 3<&-
+
+# vim: ts=4:sw=4:noet

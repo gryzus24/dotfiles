@@ -14,7 +14,7 @@ alias ip='ip -color=auto'
 
 # list
 alias ls='ls --color=auto -N'
-alias l='ls -l'
+alias l='ls -lh'
 alias la='ls -A'
 
 # other

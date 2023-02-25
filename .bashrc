@@ -2,7 +2,7 @@
 # ~/.bashrc
 #
 
-# If not running interactively, don't do anything
+# If not running interactively, don't do anything.
 [[ $- != *i* ]] && return
 
 set -o vi
@@ -13,13 +13,13 @@ bind -x '"\C-l":clear -x'
 HISTCONTROL=ignoredups:erasedups
 HISTSIZE=20000
 
-bold_yellow='\e[33;1m'
-cyan='\e[36m'
-green='\e[32m'
-magenta='\e[35m'
-reset='\e[0m'
-white='\e[97m'
-yellow='\e[33m'
+bold_yellow='\033[33;1m'
+cyan='\033[36m'
+green='\033[32m'
+magenta='\033[35m'
+reset='\033[0m'
+white='\033[97m'
+yellow='\033[33m'
 
 PS1="$magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
 
