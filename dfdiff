@@ -1,8 +1,35 @@
 #!/bin/dash
 
+DFIGNORE_PATH='.dfignore'
+PY_GET_DFIGNORE="
+import sys
+with open('$DFIGNORE_PATH') as f:
+	sys.stdout.write(
+		'|'.join(
+			x + '$' for x in map(str.strip, f)
+			if x and not x.startswith('#')
+		)
+	)
+"
+
+fnames="$(git ls-files)" || exit 1
+if [ -s "$DFIGNORE_PATH" ]; then
+	ignore_pattern="$(python -Sc "$PY_GET_DFIGNORE")"
+	if [ ! -z "$ignore_pattern" ]; then
+		fnames="$(printf '%s' "$fnames" | grep -Ev "$ignore_pattern")"
+	fi
+fi
+
+if [ -z "$fnames" ]; then
+	echo "$(basename "$0"): no files to compare"
+	exit 1
+fi
+
 exec 3<&0
-git ls-files | while read -r file; do
+printf '%s\n' "$fnames" | while read -r file; do
 	home_file="$HOME/$file"
+
+	# Continue if files do not differ.
 	diff -q "$home_file" "$file" >/dev/null && continue
 
 	printf '%s	%s\n' "$home_file" "$file"
@@ -14,4 +41,4 @@ git ls-files | while read -r file; do
 done
 exec 3<&-
 
-# vim: ts=4:sw=4:noet
+# vim: ft=sh:ts=4:sw=4:noet
