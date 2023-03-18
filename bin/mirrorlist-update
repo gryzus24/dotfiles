@@ -8,7 +8,7 @@ fi
 mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
 
 reflector \
-	--country PL,DE,CZ,SK,GB,FR,US \
+	--country PL,DE,CZ,SK,GB,FR \
 	--latest 6 \
 	--sort rate \
 	--protocol https \

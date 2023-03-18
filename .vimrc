@@ -8,8 +8,9 @@ set mouse=
 set scrolloff=7
 set smartcase
 
+set expandtab
 set shiftwidth=4
-set tabstop=8
+set tabstop=4
 
 set path+=**
 
