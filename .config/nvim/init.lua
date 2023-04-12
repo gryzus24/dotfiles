@@ -32,7 +32,6 @@ vim.call('plug#begin', '~/.local/share/nvim/plugged')
 
 Plug('neovim/nvim-lspconfig')
 Plug('nvim-treesitter/nvim-treesitter', {['do'] = ':TSUpdate'})
-Plug('nvim-treesitter/playground')
 Plug('windwp/nvim-autopairs')
 
 vim.call('plug#end')
