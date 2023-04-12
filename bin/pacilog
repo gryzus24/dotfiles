@@ -1,0 +1,86 @@
+#!/usr/bin/env -S python3 -S
+from __future__ import annotations
+
+import subprocess
+import sys
+
+INSTALLED = 0
+REMOVED = 1
+
+
+def main() -> int:
+    with subprocess.Popen(
+        ('/usr/bin/pacman', '-Q', '-i'),
+        stdout=subprocess.PIPE,
+        env={'LC_ALL': 'C'},
+        encoding='UTF-8'
+    ) as p:
+        outs, _ = p.communicate()
+
+    check = ('Name', 'Version', 'Install Reason')
+    lines = [
+        x[18:]
+        for x in outs.splitlines()
+        if x.startswith(check)
+    ]
+
+    expinstalled = {
+        lines[i]: lines[i + 1]
+        for i in range(0, len(lines), len(check))
+        if lines[i + 2].startswith('E')
+    }
+
+    log = []
+    package_width = version_width = 0
+    with open('/var/log/pacman.log') as f:
+        for line in map(str.strip, f):
+            date, _, rest = line.partition(' ')
+            if rest.startswith('[ALPM] installed '):
+                _, _, package = rest.partition('installed ')
+                action = INSTALLED
+            elif rest.startswith('[ALPM] removed '):
+                _, _, package = rest.partition('removed ')
+                action = REMOVED
+            else:
+                continue
+
+            name, _, version = package.partition(' ')
+            if name not in expinstalled:
+                continue
+
+            if len(name) > package_width:
+                package_width = len(name)
+
+            version = version.strip('()')
+            if len(version) > version_width:
+                version_width = len(version)
+
+            log.append((date, action, name, version))
+
+    removed = set()
+    for date, action, name, version in reversed(log):
+        if action == REMOVED:
+            removed.add(name)
+        elif action == INSTALLED:
+            if name not in removed:
+                date, _, time = date.partition('T')
+                time, _, _ = time.partition('+')
+                sys.stdout.write(
+                    f'{date} {time}] '
+                    f'{name:{package_width}} '
+                    f'{version:{version_width}} '
+                )
+                current_version = expinstalled[name]
+                if version != current_version:
+                    sys.stdout.write(f'[{current_version}]')
+
+                sys.stdout.write('\n')
+        else:
+            raise AssertionError('unreachable')
+
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
+

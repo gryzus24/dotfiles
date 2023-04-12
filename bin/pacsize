@@ -12,21 +12,21 @@ def main() -> int:
         env={'LC_ALL': 'C'},
         encoding='UTF-8'
     ) as p:
-        sout, _ = p.communicate()
+        outs, _ = p.communicate()
 
     check = ('Name', 'Installed Size')
     lines = [
         x[18:]
-        for x in sout.splitlines()
+        for x in outs.splitlines()
         if x.startswith(check)
     ]
 
-    maxwidth = total_bytes = 0
-    packages: list[tuple[str, str, int]] = []
-    for i in range(0, len(lines), 2):
+    packages = []
+    package_width = total_bytes = 0
+    for i in range(0, len(lines), len(check)):
         name = lines[i]
-        if len(name) > maxwidth:
-            maxwidth = len(name)
+        if len(name) > package_width:
+            package_width = len(name)
 
         ssize, _, unit = lines[i + 1].partition(' ')
         if unit == 'B':
@@ -45,13 +45,13 @@ def main() -> int:
 
     total_gib = total_bytes / (1024 ** 3)
 
-    sys.stdout.write(f'{"NUMBER OF PACKAGES":{maxwidth}} : {len(packages)}\n')
-    sys.stdout.write(f'{"TOTAL SIZE ON DISK":{maxwidth}} : {total_gib:.3f} GiB\n')
+    sys.stdout.write(f'{"NUMBER OF PACKAGES":{package_width}} : {len(packages)}\n')
+    sys.stdout.write(f'{"TOTAL SIZE ON DISK":{package_width}} : {total_gib:.3f} GiB\n')
     sys.stdout.write(18 * '=' + '\n')
 
     packages.sort(key=lambda x: x[2], reverse=True)
     for name, size, _ in packages:
-        sys.stdout.write(f'{name:{maxwidth}} : {size}\n')
+        sys.stdout.write(f'{name:{package_width}} : {size}\n')
 
     return 0
 
