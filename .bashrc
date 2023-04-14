@@ -11,7 +11,7 @@ stty -ixon
 bind -x '"\C-l":clear -x'
 
 HISTCONTROL=ignoredups:erasedups
-HISTSIZE=20000
+HISTSIZE=100000
 
 bold_yellow='\033[33;1m'
 cyan='\033[36m'
