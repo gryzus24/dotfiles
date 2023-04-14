@@ -2,7 +2,7 @@
 #
 # Please see https://i3wm.org/docs/userguide.html for a complete reference!
 
-set $mod Mod4
+set $mod Mod1
 floating_modifier $mod
 
 default_border pixel 2
@@ -73,12 +73,13 @@ bindsym Control+Shift+slash gaps top all toggle $ogap; \
                             gaps horizontal all toggle $ogap; \
                             gaps inner all toggle $igap
 
-bindsym XF86MonBrightnessUp exec --no-startup-id xbacklight -inc 1
+bindsym XF86MonBrightnessUp   exec --no-startup-id xbacklight -inc 1
 bindsym XF86MonBrightnessDown exec --no-startup-id xbacklight -dec 1
-bindsym XF86AudioRaiseVolume exec --no-startup-id pamixer -i 5
-bindsym XF86AudioLowerVolume exec --no-startup-id pamixer -d 5
-bindsym XF86AudioMute exec --no-startup-id pamixer -t
-bindsym XF86TouchpadToggle exec --no-startup-id $HOME/bin/touchpad-toggle
+bindsym XF86AudioRaiseVolume  exec --no-startup-id pamixer -i 5
+bindsym XF86AudioLowerVolume  exec --no-startup-id pamixer -d 5
+bindsym XF86AudioMute         exec --no-startup-id pamixer -t
+bindsym XF86TouchpadToggle    exec --no-startup-id $HOME/bin/touchpad-toggle
+
 set $ws1 "1"
 set $ws2 "2"
 set $ws3 "3"
