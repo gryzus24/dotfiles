@@ -20,3 +20,4 @@ alias la='ls -A'
 # other
 alias nal="$EDITOR ~/.config/alacritty/alacritty.yml"
 alias acti='. venv/bin/activate'
+alias zath='devour zathura'
