@@ -1,0 +1,29 @@
+#!/usr/bin/env -S python3 -S
+
+import os
+import sys
+
+
+def main() -> int:
+    if sys.version_info < (3, 8):
+        sys.stderr.write('error: only python3.8+ can run this script\n')
+        return 1
+
+    try:
+        history_path = os.path.join(os.environ['HOME'], '.bash_history')
+    except KeyError:
+        sys.stderr.write('error: $HOME not set\n')
+        return 1
+
+    with open(history_path) as f:
+        result = reversed(dict.fromkeys(reversed(tuple(f))))
+
+    with open(history_path, 'w') as f:
+        f.writelines(result)
+
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
+
