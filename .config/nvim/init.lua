@@ -17,12 +17,12 @@ set.smartcase = true
 
 set.path = '**'
 
-vim.keymap.set('n', '<leader>c<cr>', ':-1read ~/.vim/snippets/c.snip<cr>4j')
-vim.keymap.set('n', '<leader>java<cr>', ':-1read ~/.vim/snippets/java.snip<cr>2j')
-vim.keymap.set('n', '<leader>latex<cr>', ':-1read ~/.vim/snippets/latex.snip<cr>')
-vim.keymap.set('n', '<leader>latexmake<cr>', ':-1read ~/.vim/snippets/latexmake.snip<cr>')
-vim.keymap.set('n', '<leader>make<cr>', ':-1read ~/.vim/snippets/make.snip<cr>')
-vim.keymap.set('n', '<leader>python<cr>', ':-1read ~/.vim/snippets/python.snip<cr>4j')
+vim.keymap.set('n', '<leader>c<cr>',          ':-1read ~/.vim/snippets/c.snip<cr>')
+vim.keymap.set('n', '<leader>java<cr>',       ':-1read ~/.vim/snippets/java.snip<cr>')
+vim.keymap.set('n', '<leader>latex<cr>',      ':-1read ~/.vim/snippets/latex.snip<cr>')
+vim.keymap.set('n', '<leader>make_c<cr>',     ':-1read ~/.vim/snippets/make_c.snip<cr>')
+vim.keymap.set('n', '<leader>make_latex<cr>', ':-1read ~/.vim/snippets/make_latex.snip<cr>')
+vim.keymap.set('n', '<leader>python<cr>',     ':-1read ~/.vim/snippets/python.snip<cr>')
 
 vim.keymap.set('n', '<cr>', ':noh<cr><cr>')
 vim.keymap.set('n', '<leader>am', ':w | !make')

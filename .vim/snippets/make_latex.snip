@@ -1,0 +1,12 @@
+DOC = doc
+FLAGS =
+
+one:
+	texfot pdflatex $(FLAGS) $(DOC).tex
+
+two:
+	texfot pdflatex $(FLAGS) $(DOC).tex
+	texfot pdflatex $(FLAGS) $(DOC).tex
+
+clean:
+	rm -f $(DOC).aux $(DOC).log
