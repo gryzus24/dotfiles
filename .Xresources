@@ -7,10 +7,10 @@ XTerm.VT100.geometry: 79x24
 XTerm.VT100.backarrowKey: false
 XTerm.ttyModes: erase ^?
 
-XTerm*renderFont: false
-XTerm*initialFont: DefaultFont
+XTerm.VT100.renderFont: false
+XTerm.VT100.initialFont: DefaultFont
 
-XTerm*saveLines: 8192
+XTerm.VT100.saveLines: 8192
 
 XTerm.VT100.translations: #override \
 Ctrl <Key>minus: smaller-vt-font() \n\
@@ -18,6 +18,8 @@ Ctrl <Key>plus: larger-vt-font() \n\
 Ctrl <Key>0: set-vt-font(DefaultFont) \n\
 Ctrl Shift <Key>C: copy-selection(CLIPBOARD) \n\
 Ctrl Shift <Key>V: insert-selection(CLIPBOARD) \n\
+Ctrl Shift <Key>Up: scroll-back(1) \n\
+Ctrl Shift <Key>Down: scroll-forw(1) \n\
 
 XTerm.VT100.colorITMode: true
 

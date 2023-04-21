@@ -25,11 +25,10 @@ PS1="$magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
 
 bind 'set completion-ignore-case on'
 
-shopt -s autocd          # change to named directory
-shopt -s cdspell         # autocorrects cd misspellings
-shopt -s cmdhist         # save multi-line commands in history as single line
-shopt -s dotglob
-shopt -s histappend      # do not overwrite history
-shopt -s expand_aliases  # expand aliases
+shopt -s autocd      # change to named directory
+shopt -s cdspell     # autocorrects cd misspellings
+shopt -s cmdhist     # save multi-line commands in history as single line
+shopt -s dotglob     # include .files in pathname expansion
+shopt -s histappend  # do not overwrite history
 
 [[ -f ~/.bash_aliases ]] && . ~/.bash_aliases
