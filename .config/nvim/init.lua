@@ -9,7 +9,7 @@ set.tabstop = 4
 
 set.colorcolumn = '80'
 set.number = true
-set.relativenumber = false
+set.relativenumber = true
 set.scrolloff = 7
 
 set.ignorecase = true
