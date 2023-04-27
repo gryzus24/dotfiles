@@ -31,4 +31,6 @@ shopt -s cmdhist     # save multi-line commands in history as single line
 shopt -s dotglob     # include .files in pathname expansion
 shopt -s histappend  # do not overwrite history
 
+export LESS='-iR'
+
 [[ -f ~/.bash_aliases ]] && . ~/.bash_aliases

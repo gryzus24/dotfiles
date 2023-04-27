@@ -31,7 +31,7 @@ bindsym $mod         +o workspace next_on_output
 # p
 bindsym $mod         +a focus parent
 bindsym $mod         +s layout stacking
-bindsym $mod         +d exec --no-startup-id rofi -show combi
+bindsym $mod         +d exec --no-startup-id rofi -show drun
 bindsym $mod         +f fullscreen toggle
 # g
 bindsym $mod         +h focus left
@@ -115,8 +115,8 @@ bar {
     tray_padding 0
     separator_symbol " | "
     colors {
-        background #000000 #000000bf
-        statusline #cccccc #b9f2ff
+        background #000000 #000000cc
+        statusline #cccccc
         separator #666666
         #                  border  bg      text
         focused_workspace  #4c7899 #285577 #ffffff
@@ -130,5 +130,4 @@ bar {
 #exec_always --no-startup-id picom --config $HOME/.config/picom/picom.conf
 
 exec --no-startup-id nitrogen --restore
-exec --no-startup-id clipmenud
 exec --no-startup-id unclutter

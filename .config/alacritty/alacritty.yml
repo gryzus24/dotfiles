@@ -22,19 +22,19 @@ scrolling:
 
 font:
   normal:
-    family: Inconsolata
+    family: Source Code Pro
     style: Regular
   bold:
-    family: Inconsolata
+    family: Source Code Pro
     style: Bold
   italic:
-    family: Inconsolata
-    style: Light
+    family: Source Code Pro
+    style: Italic
   bold_italic:
-    family: Inconsolata
-    style: SemiBold
+    family: Source Code Pro
+    style: Bold Italic
 
-  size: 18.0
+  size: 16.0
 
   offset:
     x: -1

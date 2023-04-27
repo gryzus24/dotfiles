@@ -1,8 +1,155 @@
 configuration {
-  modes: "combi";
-  font: "Source Code Pro 12";
-  sort: true;
-  combi-modes: "run,window";
-  matching: "prefix";
+  modes:               "drun,run,window";
+  font:                "Source Code Pro 12";
+  sort:                true;
+  cycle:               false;
+  combi-modes:         "drun,run,window";
+  matching:            "prefix";
+
+  /* Unbind keys that are going to be used in the next section. */
+  kb-remove-char-back: "BackSpace,Shift+BackSpace";
+  kb-accept-entry:     "Control+m,Return,KP_Enter";
+  kb-remove-to-eol:    "";
+  kb-mode-complete:    "";
+  kb-select-1:         "";
+  kb-select-2:         "";
+  kb-select-3:         "";
+  kb-select-4:         "";
+  kb-select-5:         "";
+  kb-select-6:         "";
+  kb-select-7:         "";
+  kb-select-8:         "";
+  kb-select-9:         "";
+  kb-select-10:        "";
+
+  kb-row-up:           "Control+k,Up,Control+p";
+  kb-row-down:         "Control+j,Down,Control+n";
+  kb-mode-next:        "Control+l,Shift+Right,Control+Tab";
+  kb-mode-previous:    "Control+h,Shift+Left";
+  kb-cancel:           "Escape,Control+bracketleft,Super+1,Super+2,Super+3,Super+4,Super+5,Super+6,Super+7";
 }
-@theme "glue_pro_blue"
+
+* {
+  background-color:           #000000;
+  text-color:                 #ffffff;
+
+  accent-color:               #4c7899;
+  hover-color:                #5f676a;
+  urgent-color:               #ff5252;
+  window-color:               #ffffff;
+
+  selected-normal-foreground: @window-color;
+  normal-foreground:          @text-color;
+  selected-normal-background: @hover-color;
+  normal-background:          @background-color;
+
+  selected-urgent-foreground: @background-color;
+  urgent-foreground:          @text-color;
+  selected-urgent-background: @urgent-color;
+  urgent-background:          @background-color;
+
+  selected-active-foreground: @window-color;
+  active-foreground:          @text-color;
+  selected-active-background: @hover-color;
+  active-background:          @accent-color;
+}
+
+window {
+  padding: 2px;
+}
+
+scrollbar {
+  width:        4px;
+  handle-width: 4px;
+  handle-color: @accent-color;
+}
+
+mainbox {
+  children: [ horibox, listview, mode-switcher ];
+}
+
+listview {
+  scrollbar: false;
+}
+
+horibox {
+  expand:      false;
+  orientation: horizontal;
+  children:    [ prompt, entry ];
+}
+
+prompt {
+  padding:          8px;
+  background-color: @accent-color;
+  text-color:       @background-color;
+}
+
+entry {
+  margin: 6px;
+}
+
+element {
+  padding: 6px;
+  margin:  0px;
+}
+
+element normal.normal {
+  background-color: @normal-background;
+  text-color:       @normal-foreground;
+}
+
+element normal.urgent {
+  background-color: @urgent-background;
+  text-color:       @urgent-foreground;
+}
+
+element normal.active {
+  background-color: @active-background;
+  text-color:       @active-foreground;
+}
+
+element selected.normal {
+  background-color: @selected-normal-background;
+  text-color:       @selected-normal-foreground;
+}
+
+element selected.urgent {
+  background-color: @selected-urgent-background;
+  text-color:       @selected-urgent-foreground;
+}
+
+element selected.active {
+  background-color: @selected-active-background;
+  text-color:       @selected-active-foreground;
+}
+
+element alternate.normal {
+  background-color: @normal-background;
+  text-color:       @normal-foreground;
+}
+
+element alternate.urgent {
+  background-color: @urgent-background;
+  text-color:       @urgent-foreground;
+}
+
+element alternate.active {
+  background-color: @active-background;
+  text-color:       @active-foreground;
+}
+
+button {
+  padding: 2px;
+}
+
+button selected {
+  background-color: @active-background;
+  text-color:       @background-color;
+}
+
+textbox {
+  padding: 6px;
+  text-color: @urgent-foreground;
+}
+
+/* vim: set sw=2 ft=css: */
