@@ -1,0 +1,10 @@
+#!/bin/dash
+
+PYSTRIP='
+import sys
+sys.stdout.write(" ".join("".join(sys.stdin).split()))
+'
+
+fzf --exact --no-sort < "$HOME/.bash_history" \
+    | python3 -Sc "$PYSTRIP" \
+    | xclip -sel clip
