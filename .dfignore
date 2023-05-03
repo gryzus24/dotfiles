@@ -1,4 +1,5 @@
 .dfignore
 dfdiff
+htoprc
 touchpad-toggle
 i3status/config

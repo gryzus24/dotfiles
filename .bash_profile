@@ -10,6 +10,14 @@ export XDG_STATE_HOME="$HOME/.local/state"
 
 [[ -f ~/.bashrc ]] && . ~/.bashrc
 
+export EDITOR=vim
+export VISUAL=vim
+export PAGER=less
+
+type -p alacritty >/dev/null && export TERMINAL=alacritty || export TERMINAL=xterm
+type -p librewolf >/dev/null && export BROWSER=librewolf || export BROWSER=firefox
+
+export LESS=-iR
 export PATH="$HOME/bin:$PATH"
 
 if [ -z "$DISPLAY" ] && [ "$XDG_VTNR" -eq 1 ]; then
