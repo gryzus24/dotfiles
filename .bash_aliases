@@ -17,25 +17,26 @@ alias ls='ls --color=auto -N'
 alias l='ls -lh'
 alias la='ls -A'
 
-# completions
-compdir='/usr/share/bash-completion/completions'
-
+# other
+alias acti='. venv/bin/activate'
+alias nal='$EDITOR $HOME/.config/alacritty/alacritty.yml'
 alias zath='devour zathura'
-. "$compdir/zathura" 2>/dev/null && complete -F _zathura zath
-
-## `complete -c ...`          complete commands
-## `complete -F _command ...` complete commands and directories in $PWD
-complete -c devour
-
-unset compdir
 
 # functions
 cdw() {
   path="$(which "$1")" || return 1
-  cd "$(dirname "$path")"
+  cd "$(dirname "$path")" || return 1
 }
+
+# completions
+
+## `complete -c ...`          complete commands
+## `complete -F _command ...` complete commands and directories in $PWD
+complete -cf devour
 complete -c cdw
 
-# other
-alias nal="$EDITOR $HOME/.config/alacritty/alacritty.yml"
-alias acti='. venv/bin/activate'
+compdir=/usr/share/bash-completion/completions
+
+. "$compdir/zathura" 2>/dev/null && complete -F _zathura zath
+
+unset compdir
