@@ -14,6 +14,7 @@ set.scrolloff = 7
 
 set.ignorecase = true
 set.smartcase = true
+set.wildignorecase = true
 
 set.path = '**'
 
