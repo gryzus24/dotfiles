@@ -16,10 +16,10 @@ def main() -> int:
         return 1
 
     with open(history_path) as f:
-        result = reversed(dict.fromkeys(reversed(tuple(f))))
+        lines = reversed(dict.fromkeys(reversed([x.strip() for x in f])))
 
     with open(history_path, 'w') as f:
-        f.writelines(result)
+        f.writelines('\n'.join(lines))
 
     return 0
 
