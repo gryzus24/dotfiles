@@ -16,6 +16,8 @@ set.ignorecase = true
 set.smartcase = true
 set.wildignorecase = true
 
+set.completeopt = 'menu'
+
 set.path = '**'
 
 vim.keymap.set('n', '<leader>c<cr>',          ':-1read ~/.vim/snippets/c.snip<cr>')
@@ -34,12 +36,19 @@ vim.call('plug#begin', '~/.local/share/nvim/plugged')
 Plug('neovim/nvim-lspconfig')
 Plug('nvim-treesitter/nvim-treesitter', {['do'] = ':TSUpdate'})
 Plug('windwp/nvim-autopairs')
+Plug('numToStr/Comment.nvim')
 
 vim.call('plug#end')
 
 require 'treesitter-config'
 require 'lsp-config'
 require 'autopairs-config'
+
+require('Comment').setup({
+    mappings = {
+        extra = false
+    },
+})
 
 vim.cmd[[colorscheme habamax]]
 vim.api.nvim_set_hl(0, 'MatchParen', {cterm = {bold = true}, ctermfg = 'White'})
@@ -50,11 +59,11 @@ vim.api.nvim_set_hl(0, 'Statement', {ctermfg = 'Yellow'})
 vim.api.nvim_set_hl(0, '@operator', {})
 vim.api.nvim_set_hl(0, '@type', {cterm = {italic = true}, ctermfg = 'DarkGreen'})
 --vim.api.nvim_set_hl(0, '@function.call', {cterm = {italic = true}, ctermfg = 108})
+vim.api.nvim_set_hl(0, '@variable.builtin', {ctermfg = 138})
 vim.api.nvim_set_hl(0, '@function.call', {ctermfg = 144})
 vim.api.nvim_set_hl(0, '@method.call', {ctermfg = 144})
 vim.api.nvim_set_hl(0, '@punctuation.bracket', {ctermfg = 247})
 vim.api.nvim_set_hl(0, '@punctuation.delimiter', {ctermfg = 247})
-vim.api.nvim_set_hl(0, '@variable.builtin', {ctermfg = 'Yellow'})
 
 vim.api.nvim_create_autocmd(
     {'BufWinEnter'},
