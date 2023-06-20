@@ -19,7 +19,7 @@ def main() -> int:
         lines = reversed(dict.fromkeys(reversed([x.strip() for x in f])))
 
     with open(history_path, 'w') as f:
-        f.writelines('\n'.join(lines))
+        f.write('\n'.join(lines))
 
     return 0
 
