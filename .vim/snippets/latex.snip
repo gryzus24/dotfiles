@@ -1,6 +1,10 @@
 \documentclass[12pt,a4paper]{article}
-\pdfinfoomitdate 1
-\pdfsuppressptexinfo -1
+\ifdefined\pdfinfo
+  \pdfinfoomitdate 1
+  \pdfsuppressptexinfo -1
+\else
+  \special{pdf:docinfo<</Creator()/CreationDate(-1)>>}
+\fi
 
 \usepackage{polski}
 \usepackage[top=2.5cm, bottom=2.5cm, left=2cm, right=2cm]{geometry}
@@ -19,3 +23,4 @@
 
 
 \end{document}
+% vim: syntax=tex
