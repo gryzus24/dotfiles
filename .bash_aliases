@@ -28,12 +28,17 @@ cdw() {
   cd "$(dirname "$path")" || return 1
 }
 
+faketty() {
+    script -qfec "$(printf "%q " "$@")" /dev/null
+}
+
 # completions
 
 ## `complete -c ...`          complete commands
 ## `complete -F _command ...` complete commands and directories in $PWD
 complete -cf devour
 complete -c cdw
+complete -c faketty
 
 compdir=/usr/share/bash-completion/completions
 

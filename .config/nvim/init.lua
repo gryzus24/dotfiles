@@ -37,6 +37,7 @@ Plug('neovim/nvim-lspconfig')
 Plug('nvim-treesitter/nvim-treesitter', {['do'] = ':TSUpdate'})
 Plug('windwp/nvim-autopairs')
 Plug('numToStr/Comment.nvim')
+Plug('nvim-treesitter/nvim-treesitter-context')
 
 vim.call('plug#end')
 
