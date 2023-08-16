@@ -1,0 +1,54 @@
+#!/usr/bin/python3 -S
+from __future__ import annotations
+
+import os
+import sys
+
+DEFAULT_MS = '\033[01;31m'  #]
+DEFAULT_SE = '\033[36m\033[K:\033[m\033[K'  #]]]]
+
+
+def main() -> int:
+    colors = os.environ.get('GREP_COLORS')
+    if colors is None:
+        ms_esc = DEFAULT_MS
+        se_esc = DEFAULT_SE
+    else:
+        c = colors.split(':')
+        mses = [
+            f'\033[{x.partition("=")[2]}m\033[K'  #]
+            for x in c if x.startswith(('mt=', 'ms='))
+        ]
+        ses = [
+            f'\033[{x.partition("=")[2]}m\033[K:\033[m\033[K'  #]]]]
+            for x in c if x.startswith('se=')
+        ]
+        ms_esc = mses.pop() if mses else DEFAULT_MS
+        se_esc = ses.pop() if ses else DEFAULT_SE
+
+    parts = []
+    head_align = fileinfo_align = 0
+    for line in sys.stdin:
+        head, sep, tail = line.partition(ms_esc)
+        fileinfo, fsep, head = head.rpartition(se_esc)
+        if fsep:
+            fileinfo += fsep
+            if len(fileinfo) > fileinfo_align:
+                fileinfo_align = len(fileinfo)
+
+        head = head.lstrip()
+        if len(head) > head_align:
+            head_align = len(head)
+
+        parts.append((fileinfo, head, sep, tail))
+
+    for fileinfo, head, sep, tail in parts:
+        sys.stdout.write(
+            f'{fileinfo:{fileinfo_align}}{head.rjust(head_align)}{sep}{tail}'
+        )
+
+    return 0
+
+
+if __name__ == '__main__':
+    main()
