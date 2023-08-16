@@ -2,7 +2,7 @@
 #
 # Please see https://i3wm.org/docs/userguide.html for a complete reference!
 
-set $mod Mod4
+set $mod Mod1
 floating_modifier $mod
 
 default_border pixel 2
@@ -59,7 +59,9 @@ bindsym $mod         +minus scratchpad show
 bindsym $mod+Shift   +minus move scratchpad
 # equal
 bindsym $mod         +space focus mode_toggle
-bindsym $mod+Shift   +space floating toggle
+bindsym $mod+Shift   +space floating toggle; \
+                            [floating] border pixel 4; \
+                            [tiling] border pixel 2
 
 bindsym Control+Shift+period gaps top all set $ogap; \
                              gaps horizontal all set $ogap; \

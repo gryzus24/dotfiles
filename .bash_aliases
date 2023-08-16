@@ -24,6 +24,7 @@ alias zath='devour zathura'
 
 # functions
 cdw() {
+  local path
   path="$(which "$1")" || return 1
   cd "$(dirname "$path")" || return 1
 }
@@ -44,6 +45,7 @@ agrep() {
 complete -cf devour
 complete -c cdw
 complete -c faketty
+complete -f "$BROWSER"
 
 compdir=/usr/share/bash-completion/completions
 
