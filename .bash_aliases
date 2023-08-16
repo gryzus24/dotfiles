@@ -32,6 +32,11 @@ faketty() {
     script -qfec "$(printf "%q " "$@")" /dev/null
 }
 
+agrep() {
+    command grep --color=always "$@" | grepalign
+    return "${PIPESTATUS[0]}"
+}
+
 # completions
 
 ## `complete -c ...`          complete commands
