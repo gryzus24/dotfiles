@@ -38,6 +38,12 @@ agrep() {
     return "${PIPESTATUS[0]}"
 }
 
+wmem() {
+    local t
+    t="a = tonumber('$1'); if a == nil then io.write(0.5) else io.write(a) end"
+    watch -n "$(luajit -e "$t")" 'grep "Buffers\|Dirty\|Writeback" /proc/meminfo'
+}
+
 # completions
 
 ## `complete -c ...`          complete commands
