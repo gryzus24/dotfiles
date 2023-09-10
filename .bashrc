@@ -16,13 +16,12 @@ reset='\033[0m'
 white='\033[97m'
 yellow='\033[33m'
 
-print_current_git_branch() {
+current_git_branch() {
   local t
   t="$(git branch --show-current 2>/dev/null)" || return
   printf '(%s) ' "$t"
 }
-PROMPT_COMMAND=print_current_git_branch
-PS1="$magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
+PS1="\$(current_git_branch)$magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
 
 set -o vi
 
