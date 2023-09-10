@@ -54,6 +54,7 @@ bindsym $mod+Shift   +c reload
 bindsym $mod         +b exec --no-startup-id $BROWSER
 bindsym $mod         +n split toggle
 bindsym $mod         +m bar mode toggle
+bindsym $mod+Shift   +m exec --no-startup-id "$HOME/bin/pactl-next-sink"
 
 bindsym $mod         +minus scratchpad show
 bindsym $mod+Shift   +minus move scratchpad
