@@ -1,0 +1,98 @@
+My dotfiles and scripts
+=======================
+
+The dotfiles are not particularly exotic.
+What you might find partly useful are the scripts.
+
+Scripts
+=======
+- deduplicate-bash-history
+    Removes duplicates from the ~/.bash_history file.
+    Only the most recently used commands are kept.
+  Dependencies
+    * python (3.8+)
+
+- grepalign
+    Align every line of grep output to the first colored match.
+  Usage
+    generic:
+      $ grep --color=always <pattern> | grepalign
+    or with the helpers from ~/.bash_aliases:
+      $ faketty grep --color=auto <pattern> | grepalign 
+      $ agrep <pattern> <file>
+  Dependencies
+    * python (3.6+)
+
+- hf
+    Fuzzy search ~/.bash_history and copy the selection to clipboard.
+  Dependencies
+    * dash (shell)
+    * fzf, python, xclip
+
+- pacilog
+    List all explicitly installed pacman packages.
+    Shows
+      * time of installation
+      * package name
+      * version at the time of installation
+      * version installed now
+  Dependencies
+    * python (3.8+)
+    * pacman
+
+- pacsize
+    List all installed pacman packages sorted by size.
+  Dependencies
+    * python (3.6+)
+
+- pactl-next-sink
+    Switch to the next available pipewire/pulseaudio sink.
+  Dependencies
+    * python (3.6+)
+    * pactl
+
+- scrot-clip
+    Run scrot in "--select" mode and copy the selected image to clipboard.
+  Dependencies
+    * dash (shell)
+    * scrot, xclip
+    * xdotool (required when using unclutter)
+
+- scrot-sxiv (see source code)
+    Run scrot in "--select --freeze" mode, save the selected image to
+    XDG_PICTURES/Scrots and open it in sxiv.
+  Dependencies
+    * dash (shell)
+    * scrot, sxiv
+    * xdotool (required when using unclutter)
+
+- touchpad-toggle (specific)
+    Toggle (enable/disable) the Synaptics TouchPad.
+
+- update-mirrorlist (specific, see source code)
+    Updates the /etc/pacman.d/mirrorlist file.
+  Dependencies
+    * dash (shell)
+    * reflector, diff
+
+Bash functions
+==============
+- cdw
+    cd into $(dirname $(which $1)).
+
+- faketty
+    fake <command> to run as if attached to a tty.
+  Usage
+    $ faketty <command>
+
+- agrep
+    Alias to grep piped into grepalign.
+
+- wmem
+    Watch (Buffers, Dirty and Writeback) entries from /proc/meminfo.
+    Update every <n> seconds or 0.5 if unspecified.
+  Usage
+    $ wmem
+    $ wmem <n>
+  Dependencies
+    * luajit
