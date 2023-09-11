@@ -1,0 +1,143 @@
+#!/usr/bin/python3 -S
+# Adapted from: https://gist.github.com/labeneator/9574294
+##
+
+from __future__ import annotations
+
+import curses
+import os
+from typing import Dict, List, TypedDict
+
+PAGE_SIZE = os.sysconf('SC_PAGE_SIZE')
+
+
+class Zoneinfo(TypedDict):
+    zone: str
+    sz_chunk: list[int]
+    nr_free: list[int]
+    usage: list[int]
+
+
+buddyinfo_t = Dict[str, List[Zoneinfo]]
+
+
+def load_buddyinfo() -> buddyinfo_t:
+    buddyinfo = {}
+    with open('/proc/buddyinfo') as f:
+        for line in f:
+            _, node, _, zone, *nr_free = line.split()
+
+            chunk_sizes = []
+            usage_in_bytes = []
+            free_chunks = list(map(int, nr_free))
+            for i, nfree_chunks in enumerate(free_chunks):
+                chunk_sizes.append(PAGE_SIZE * (1 << i))
+                usage_in_bytes.append(chunk_sizes[i] * nfree_chunks)
+
+            if node not in buddyinfo:
+                buddyinfo[node] = []
+
+            buddyinfo[node].append({
+                'zone': zone,
+                'sz_chunk': chunk_sizes,
+                'nr_free': free_chunks,
+                'usage': usage_in_bytes,
+            })
+
+    return buddyinfo
+
+
+def _wln(dest: list[str], s: str) -> None:
+    if len(s) >= curses.COLS - 1:
+        s = s[:curses.COLS - 1]
+
+    dest.append(s)
+
+
+def format_buddyinfo(buddyinfo: buddyinfo_t) -> list[str]:
+    colw = 20
+    result = []
+    for node in buddyinfo:
+        _wln(result, f'Node: {node}')
+        for zoneinfo in buddyinfo[node]:
+            _wln(result, f' Zone: {zoneinfo["zone"]}')
+            free_in_zone = sum(zoneinfo["usage"]) / (1024 ** 2)
+            _wln(result, f' Free in zone (MiB): {free_in_zone:.2f} \n')
+            _wln(
+                result,
+                f'        {"Chunk size (KiB)":<{colw}}'
+                f'{"Free chunks":<{colw}}'
+                f'{"Total (MiB)":<{colw}}'
+            )
+            for indx, chunk_size in enumerate(zoneinfo['sz_chunk']):
+                _wln(
+                    result,
+                    f'        {chunk_size // 1024:<{colw}}'
+                    f'{zoneinfo["nr_free"][indx]:<{colw}}'
+                    f'{zoneinfo["usage"][indx] / (1024 ** 2):<{colw}.2f}'
+                )
+
+    return result
+
+
+def draw(win: curses._CursesWindow, lines: list[str], scroll: int) -> None:
+    win.erase()
+    try:
+        for y, line in enumerate(lines[scroll:scroll + curses.LINES]):
+            win.addstr(y, 0, line)
+    except curses.error:  # lower-right corner write
+        pass
+
+
+def curses_main(win: curses._CursesWindow) -> None:
+    curses.halfdelay(5)
+
+    scroll = 0
+    while True:
+        buddyinfo = load_buddyinfo()
+        lines = format_buddyinfo(buddyinfo)
+
+        draw(win, lines, scroll)
+
+        c = win.getch()
+        if c == -1:  # halfdelayed
+            continue
+
+        key = curses.keyname(c)
+        if c == curses.KEY_RESIZE:
+            curses.update_lines_cols()
+            draw(win, lines, scroll)
+        elif key in {b'j', b'J', b'KEY_DOWN'}:
+            end = len(lines) - curses.LINES + 1
+            if scroll < end:
+                scroll += 1
+        elif key in {b'k', b'K', b'KEY_UP'}:
+            if scroll > 0:
+                scroll -= 1
+        elif key in {b'q', b'Q'}:
+            return
+
+
+def main() -> None:
+    stdscr = curses.initscr()
+    try:
+        stdscr.keypad(True)
+        try:
+            curses.curs_set(0)
+        except curses.error:
+            pass
+
+        curses.nonl()
+        curses.cbreak()
+        curses.noecho()
+
+        curses_main(stdscr)
+    finally:
+        curses.endwin()
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
