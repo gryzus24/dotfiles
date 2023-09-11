@@ -12,7 +12,7 @@ Scripts in ~/bin
     * python (3.6+)
 
 - deduplicate-bash-history
-    Removes duplicates from the ~/.bash_history file.
+    Remove duplicates from the ~/.bash_history file.
     Only the most recently used commands are kept.
   Dependencies
     * python (3.8+)
@@ -21,10 +21,10 @@ Scripts in ~/bin
     Align every line of grep output to the first colored match.
   Usage
     generic:
-      $ grep --color=always <pattern> | grepalign
+      $ grep --color=always [...] | grepalign
     or with the helpers from ~/.bash_aliases:
-      $ faketty grep --color=auto <pattern> | grepalign 
-      $ agrep <pattern> <file>
+      $ faketty grep --color=auto [...] | grepalign
+      $ agrep [...]
   Dependencies
     * python (3.6+)
 
@@ -75,7 +75,7 @@ Scripts in ~/bin
     Toggle (enable/disable) the Synaptics TouchPad.
 
 - update-mirrorlist (specific, see source code)
-    Updates the /etc/pacman.d/mirrorlist file.
+    Update the /etc/pacman.d/mirrorlist file.
   Dependencies
     * dash (shell)
     * reflector, diff
@@ -86,7 +86,7 @@ Bash functions in ~/.bash_aliases
     cd into $(dirname $(which $1)).
 
 - faketty
-    fake <command> to run as if attached to a tty.
+    Make <command> think its attached to a tty.
   Usage
     $ faketty <command>
 
