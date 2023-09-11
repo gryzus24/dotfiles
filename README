@@ -4,8 +4,13 @@ My dotfiles and scripts
 The dotfiles are not particularly exotic.
 What you might find partly useful are the scripts.
 
-Scripts
-=======
+Scripts in ~/bin
+================
+- buddyinfo-mon
+    Monitor a pretty printed /proc/buddyinfo.
+  Dependencies
+    * python (3.6+)
+
 - deduplicate-bash-history
     Removes duplicates from the ~/.bash_history file.
     Only the most recently used commands are kept.
@@ -75,8 +80,8 @@ Scripts
     * dash (shell)
     * reflector, diff
 
-Bash functions
-==============
+Bash functions in ~/.bash_aliases
+=================================
 - cdw
     cd into $(dirname $(which $1)).
 
