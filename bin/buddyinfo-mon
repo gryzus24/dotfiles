@@ -1,28 +1,33 @@
 #!/usr/bin/python3 -S
 # Adapted from: https://gist.github.com/labeneator/9574294
-##
+# #
 
 from __future__ import annotations
 
 import curses
 import os
-from typing import Dict, List, TypedDict
+import sys
+from typing import Dict
+from typing import List
+from typing import Tuple
+from typing import TypedDict
 
 PAGE_SIZE = os.sysconf('SC_PAGE_SIZE')
 
 
-class Zoneinfo(TypedDict):
+class zoneinfo_t(TypedDict):
     zone: str
     sz_chunk: list[int]
     nr_free: list[int]
     usage: list[int]
 
 
-buddyinfo_t = Dict[str, List[Zoneinfo]]
+buddyinfo_t = Dict[str, List[zoneinfo_t]]
+line_t = Tuple[str, int, int, int]
 
 
 def load_buddyinfo() -> buddyinfo_t:
-    buddyinfo = {}
+    binfo: buddyinfo_t = {}
     with open('/proc/buddyinfo') as f:
         for line in f:
             _, node, _, zone, *nr_free = line.split()
@@ -34,88 +39,141 @@ def load_buddyinfo() -> buddyinfo_t:
                 chunk_sizes.append(PAGE_SIZE * (1 << i))
                 usage_in_bytes.append(chunk_sizes[i] * nfree_chunks)
 
-            if node not in buddyinfo:
-                buddyinfo[node] = []
+            if node not in binfo:
+                binfo[node] = []
 
-            buddyinfo[node].append({
+            binfo[node].append({
                 'zone': zone,
                 'sz_chunk': chunk_sizes,
                 'nr_free': free_chunks,
                 'usage': usage_in_bytes,
             })
 
-    return buddyinfo
+    return binfo
 
 
-def _wln(dest: list[str], s: str) -> None:
+def _push(dest: list[line_t], s: str, i: int = 0, span: int = 0, attr: int = 0) -> None:
     if len(s) >= curses.COLS - 1:
         s = s[:curses.COLS - 1]
 
-    dest.append(s)
+    dest.append((s, i, span, attr))
 
 
-def format_buddyinfo(buddyinfo: buddyinfo_t) -> list[str]:
-    colw = 20
-    result = []
-    for node in buddyinfo:
-        _wln(result, f'Node: {node}')
-        for zoneinfo in buddyinfo[node]:
-            _wln(result, f' Zone: {zoneinfo["zone"]}')
+def format_buddyinfo(
+        binfo: buddyinfo_t,
+        prev_binfo: buddyinfo_t | None
+) -> list[line_t]:
+    col_w = 20
+    free_chunks_w = 8
+    chunk_diff_w = col_w - free_chunks_w
+    green = curses.color_pair(curses.COLOR_GREEN)
+    red = curses.color_pair(curses.COLOR_RED)
+
+    result: list[line_t] = []
+    for node in binfo:
+        _push(result, f'Node: {node}')
+        for zone_indx, zoneinfo in enumerate(binfo[node]):
+            _push(result, f' Zone: {zoneinfo["zone"]}')
             free_in_zone = sum(zoneinfo["usage"]) / (1024 ** 2)
-            _wln(result, f' Free in zone (MiB): {free_in_zone:.2f} \n')
-            _wln(
+            _push(result, f' Free in zone (MiB): {free_in_zone:.2f} \n')
+            _push(
                 result,
-                f'        {"Chunk size (KiB)":<{colw}}'
-                f'{"Free chunks":<{colw}}'
-                f'{"Total (MiB)":<{colw}}'
+                f'        {"Chunk size (KiB)":<{col_w}}'
+                f'{"Free chunks":<{col_w}}'
+                f'{"Total (MiB)":<{col_w}}'
             )
             for indx, chunk_size in enumerate(zoneinfo['sz_chunk']):
-                _wln(
-                    result,
-                    f'        {chunk_size // 1024:<{colw}}'
-                    f'{zoneinfo["nr_free"][indx]:<{colw}}'
-                    f'{zoneinfo["usage"][indx] / (1024 ** 2):<{colw}.2f}'
-                )
+                free_chunks = zoneinfo['nr_free'][indx]
+                if prev_binfo is None:
+                    prev_free_chunks = free_chunks
+                else:
+                    prev_free_chunks = prev_binfo[node][zone_indx]['nr_free'][indx]
+
+                chunk_size_s = f'        {chunk_size // 1024:<{col_w}}'
+                free_chunks_s = f'{free_chunks:<{free_chunks_w}}'
+                usage_s = f'{zoneinfo["usage"][indx] / (1024 ** 2):<{col_w}.2f}'
+
+                if free_chunks > prev_free_chunks:
+                    chunk_diff_s = f'+{free_chunks - prev_free_chunks:<{chunk_diff_w - 1}}'
+                    _push(
+                        result,
+                        chunk_size_s + free_chunks_s + chunk_diff_s + usage_s,
+                        8 + col_w + free_chunks_w, chunk_diff_w, green
+                    )
+                elif free_chunks < prev_free_chunks:
+                    chunk_diff_s = f'-{prev_free_chunks - free_chunks:<{chunk_diff_w - 1}}'
+                    _push(
+                        result,
+                        chunk_size_s + free_chunks_s + chunk_diff_s + usage_s,
+                        8 + col_w + free_chunks_w, chunk_diff_w, red
+                    )
+                else:
+                    _push(
+                        result,
+                        chunk_size_s + free_chunks_s + ' ' * chunk_diff_w + usage_s
+                    )
 
     return result
 
 
-def draw(win: curses._CursesWindow, lines: list[str], scroll: int) -> None:
+def draw(win: curses._CursesWindow, lines: list[line_t], scroll: int) -> None:
     win.erase()
     try:
-        for y, line in enumerate(lines[scroll:scroll + curses.LINES]):
+        for y, (line, attr_i, span, attr) in enumerate(
+                lines[scroll:scroll + curses.LINES]
+        ):
             win.addstr(y, 0, line)
+            if attr:
+                win.chgat(y, attr_i, span, attr)
     except curses.error:  # lower-right corner write
         pass
 
 
 def curses_main(win: curses._CursesWindow) -> None:
-    curses.halfdelay(5)
+    try:
+        update_delay = int(float(sys.argv[1]) * 10)
+    except (IndexError, ValueError):
+        update_delay = 10
+    else:
+        update_delay = min(max(update_delay, 1), 255)
+
+    curses.halfdelay(update_delay)
 
     scroll = 0
+    prev_binfo = None
     while True:
-        buddyinfo = load_buddyinfo()
-        lines = format_buddyinfo(buddyinfo)
+        binfo = load_buddyinfo()
+        lines = format_buddyinfo(binfo, prev_binfo)
 
         draw(win, lines, scroll)
 
         c = win.getch()
-        if c == -1:  # halfdelayed
-            continue
+        if c != -1:
+            key = curses.keyname(c)
+            if c == curses.KEY_RESIZE:
+                curses.update_lines_cols()
+            elif key in {b'j', b'J', b'KEY_DOWN'}:
+                end = len(lines) - curses.LINES + 1
+                if scroll < end:
+                    scroll += 1
+            elif key in {b'k', b'K', b'KEY_UP'}:
+                if scroll > 0:
+                    scroll -= 1
+            elif key == b' ':
+                scroll += curses.LINES
+                end = len(lines) - curses.LINES + 1
+                if scroll > end:
+                    scroll = end
+            elif key in {b'g', b'KEY_HOME'}:
+                scroll = 0
+            elif key in {b'G', b'KEY_END'}:
+                scroll = len(lines) - curses.LINES + 1
+            elif key in {b'q', b'Q'}:
+                return
+        else:
+            pass  # halfdelayed
 
-        key = curses.keyname(c)
-        if c == curses.KEY_RESIZE:
-            curses.update_lines_cols()
-            draw(win, lines, scroll)
-        elif key in {b'j', b'J', b'KEY_DOWN'}:
-            end = len(lines) - curses.LINES + 1
-            if scroll < end:
-                scroll += 1
-        elif key in {b'k', b'K', b'KEY_UP'}:
-            if scroll > 0:
-                scroll -= 1
-        elif key in {b'q', b'Q'}:
-            return
+        prev_binfo = binfo
 
 
 def main() -> None:
@@ -130,6 +188,18 @@ def main() -> None:
         curses.nonl()
         curses.cbreak()
         curses.noecho()
+
+        try:
+            curses.start_color()
+        except curses.error:
+            pass
+        try:
+            curses.use_default_colors()
+        except curses.error:
+            pass
+
+        for i in range(8):
+            curses.init_pair(i, i, -1)
 
         curses_main(stdscr)
     finally:
