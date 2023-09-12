@@ -57,6 +57,7 @@ def main() -> int:
 
             log.append((date, action, name, version))
 
+    o = sys.stdout
     removed = set()
     for date, action, name, version in reversed(log):
         if action == REMOVED:
@@ -65,16 +66,16 @@ def main() -> int:
             if name not in removed:
                 date, _, time = date.partition('T')
                 time, _, _ = time.partition('+')
-                sys.stdout.write(
+                o.write(
                     f'{date} {time}] '
                     f'{name:{package_width}} '
                     f'{version:{version_width}} '
                 )
                 current_version = expinstalled[name]
                 if version != current_version:
-                    sys.stdout.write(f'[{current_version}]')
+                    o.write(f'[{current_version}]')
 
-                sys.stdout.write('\n')
+                o.write('\n')
         else:
             raise AssertionError('unreachable')
 
