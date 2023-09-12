@@ -45,13 +45,14 @@ def main() -> int:
 
     total_gib = total_bytes / (1024 ** 3)
 
-    sys.stdout.write(f'{"NUMBER OF PACKAGES":{package_width}} : {len(packages)}\n')
-    sys.stdout.write(f'{"TOTAL SIZE ON DISK":{package_width}} : {total_gib:.3f} GiB\n')
-    sys.stdout.write(18 * '=' + '\n')
+    o = sys.stdout
+    o.write(f'{"NUMBER OF PACKAGES":{package_width}} : {len(packages)}\n')
+    o.write(f'{"TOTAL SIZE ON DISK":{package_width}} : {total_gib:.3f} GiB\n')
+    o.write(18 * '=' + '\n')
 
     packages.sort(key=lambda x: x[2], reverse=True)
     for name, size, _ in packages:
-        sys.stdout.write(f'{name:{package_width}} : {size}\n')
+        o.write(f'{name:{package_width}} : {size}\n')
 
     return 0
 

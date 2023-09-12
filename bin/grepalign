@@ -42,10 +42,9 @@ def main() -> int:
 
         parts.append((fileinfo, head, sep, tail))
 
+    o = sys.stdout
     for fileinfo, head, sep, tail in parts:
-        sys.stdout.write(
-            f'{fileinfo:{fileinfo_align}}{head.rjust(head_align)}{sep}{tail}'
-        )
+        o.write(f'{fileinfo:{fileinfo_align}}{head.rjust(head_align)}{sep}{tail}')
 
     return 0
 
