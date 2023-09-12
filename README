@@ -7,9 +7,17 @@ What you might find partly useful are the scripts.
 Scripts in ~/bin
 ================
 - buddyinfo-mon
-    Monitor a pretty printed /proc/buddyinfo.
+    Interactive /proc/buddyinfo monitoring tool.
+    Update every <n> seconds or 1s if unspecified.
+  Usage
+    $ buddyinfo-mon <n>
+    --
+    j k    line down/up
+    space  page down
+    g G    top/bottom
+    q      quit
   Dependencies
-    * python (3.6+)
+    * python (3.7+)
 
 - deduplicate-bash-history
     Remove duplicates from the ~/.bash_history file.
@@ -26,7 +34,7 @@ Scripts in ~/bin
       $ faketty grep --color=auto [...] | grepalign
       $ agrep [...]
   Dependencies
-    * python (3.6+)
+    * python (3.7+)
 
 - hf
     Fuzzy search ~/.bash_history and copy the selection to clipboard.
@@ -42,18 +50,18 @@ Scripts in ~/bin
       * version at the time of installation
       * version installed now
   Dependencies
-    * python (3.8+)
+    * python (3.7+)
     * pacman
 
 - pacsize
     List all installed pacman packages sorted by size.
   Dependencies
-    * python (3.6+)
+    * python (3.7+)
 
 - pactl-next-sink
     Switch to the next available pipewire/pulseaudio sink.
   Dependencies
-    * python (3.6+)
+    * python (3.7+)
     * pactl
 
 - scrot-clip
@@ -95,9 +103,8 @@ Bash functions in ~/.bash_aliases
 
 - wmem
     Watch (Buffers, Dirty and Writeback) entries from /proc/meminfo.
-    Update every <n> seconds or 0.5 if unspecified.
+    Update every <n> seconds or 0.5s if unspecified.
   Usage
-    $ wmem
     $ wmem <n>
   Dependencies
     * luajit
