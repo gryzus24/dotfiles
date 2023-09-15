@@ -64,6 +64,19 @@ Scripts in ~/bin
     * python (3.7+)
     * pactl
 
+- rename-tool
+    Run <command> (e.g. an image viewer) on every <file> and ask for a new
+    name for that <file>.  Does not allow overwriting a file that already
+    exists on the filesystem.
+  Limitations
+    * does not support two-cell wide character input (i.e. Kanji, emoji)
+    * does not allow coming back to an already renamed file
+  Usage
+    $ rename-tool -e <command> [files...]
+    $ rename-tool -e sxiv img0.jpg img1.jpg
+  Dependencies
+    * python (3.7+)
+
 - scrot-clip
     Run scrot in "--select" mode and copy the selected image to clipboard.
   Dependencies
