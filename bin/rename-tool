@@ -1,0 +1,671 @@
+#!/usr/bin/python3 -S
+from __future__ import annotations
+
+import curses
+import os
+import shlex
+import subprocess
+import sys
+
+from collections import deque
+from typing import Callable
+from typing import Mapping
+from typing import NamedTuple
+from typing import Sequence
+
+COMPLETION_MENU_INDENT = 2
+CURSES_COLS_MIN_VALUE  = 4
+MAX_ERRLOG_HEIGHT      = 3
+PATH_SEP               = os.path.sep
+WORD_SEPARATORS        = {' ', ',', '.', '-', '_', '/'}
+
+
+def hide_cursor() -> None:
+    try:
+        curses.curs_set(0)
+    except curses.error:  # not supported by the terminal
+        pass
+
+
+def show_cursor() -> None:
+    try:
+        curses.curs_set(1)
+    except curses.error:  # not supported by the terminal
+        pass
+
+
+# return: bool: is a control character?
+def norm_wch(wch: str | int) -> tuple[str, bool]:
+    if isinstance(wch, int):
+        return (curses.keyname(wch).decode(), True)
+
+    if len(wch) == 1:
+        o = ord(wch)
+        if o <= 31:
+            return ('^' + chr(o + 64), True)
+        elif o == 0x7f:
+            return ('^?', True)
+
+    return (wch, False)
+
+
+def truncate(s: str, n: int, trunc_char: str = '»') -> str | None:
+    # Truncates a string that does not contain wide characters.
+    if len(s) < n:
+        return s
+    if n <= 1:
+        return None
+    return s[:n-1] + trunc_char
+
+
+class SelectionResult(NamedTuple):
+    completion: str | None
+    wrapped: bool
+
+
+class CompletionMenu:
+    def __init__(self,
+            win: curses._CursesWindow,
+            entries: deque[str] | None = None
+    ) -> None:
+        self.win = win
+        self.entries = entries or deque()
+        self.reserved_space = 0
+        self._completions: Sequence[str] = self.entries
+        self._current_completion_str: str | None = None
+        self._cur: int | None = None
+        self._scroll = 0
+
+    @property
+    def cur(self) -> int | None:
+        return self._cur
+
+    def height(self) -> int:
+        r = min(len(self._completions), curses.LINES - 2 - self.reserved_space)
+        return r if r > 1 else 1
+
+    def draw(self) -> None:
+        cur = self._cur or 0
+        menu_height = self.height()
+
+        if cur >= self._scroll + menu_height:
+            self._scroll = cur - menu_height + 1
+        elif cur < self._scroll:
+            self._scroll = cur
+
+        y = curses.LINES - 2
+        width = curses.COLS - COMPLETION_MENU_INDENT
+        padding = len(str(len(self._completions)))
+        yellow = curses.color_pair(curses.COLOR_YELLOW) | curses.A_BOLD
+
+        for i in range(
+                self._scroll,
+                min(self._scroll + menu_height, len(self._completions))
+        ):
+            text = truncate(f'{i + 1:{padding}}  {self._completions[i]}', width)
+            if text is None:
+                return
+            try:
+                if self._cur == i:
+                    self.win.addstr(y, 0, '> ', yellow)
+                    self.win.addstr(y, COMPLETION_MENU_INDENT, text, curses.A_STANDOUT)
+                else:
+                    self.win.addstr(y, COMPLETION_MENU_INDENT, text)
+            except curses.error:  # window too small
+                return
+            else:
+                y -= 1
+
+    def resize(self) -> None:
+        self._scroll = 0
+
+    def has_completions(self) -> bool:
+        return bool(self._completions)
+
+    # return: True if an entry has been removed, False otherwise.
+    def remove_entry(self, s: str) -> bool:
+        try:
+            self.entries.remove(s)
+        except ValueError:
+            return False
+        else:
+            return True
+
+    # return: True if the order of entries has changed, False otherwise.
+    def add_entry(self, s: str) -> bool:
+        if not s:
+            return False
+
+        if self.entries:
+            # Don't bother removing and adding if 's' is the same as the most
+            # recently added entry (its position won't change).
+            if self.entries[0] == s:
+                return False
+
+            self.remove_entry(s)
+
+        self.entries.appendleft(s)
+
+        return True
+
+    def complete(self, s: str) -> None:
+        self._cur = None
+        self._scroll = 0
+
+        s = s.lstrip().lower()
+        if self._current_completion_str == s:
+            return
+
+        self._current_completion_str = s
+
+        if s:
+            self._completions = [x for x in self.entries if s in x.lower()]
+        else:
+            self._completions = self.entries
+
+    def deactivate(self) -> None:
+        self._cur = None
+        self._scroll = 0
+        self._current_completion_str = None
+        self._completions = self.entries
+
+    def _select(self, forward: bool) -> SelectionResult:
+        if not self._completions:
+            completion = None
+            wrapped = False
+        elif self._cur is None:
+            self._cur = (0 if forward else len(self._completions) - 1)
+            completion = self._completions[self._cur]
+            wrapped = False
+        elif self._cur == ((len(self._completions) - 1) if forward else 0):
+            self._cur = None
+            completion = None
+            wrapped = True
+        else:
+            self._cur += (1 if forward else -1)
+            completion = self._completions[self._cur]
+            wrapped = False
+
+        return SelectionResult(completion, wrapped)
+
+    def next(self) -> SelectionResult:
+        return self._select(True)
+
+    def prev(self) -> SelectionResult:
+        return self._select(False)
+
+
+class Prompt:
+    def __init__(self,
+            screen: Screen,
+            prompt: str = '', *,
+            pretype: str = '',
+            up_arrow_entries: deque[str] | None = None
+    ) -> None:
+        self.screen = screen
+        self.win = screen.win
+        self.prompt = prompt
+        self._cursor = len(pretype)
+        self._entered = pretype
+        self._up_arrow_entries = up_arrow_entries or deque()
+        self._up_arrow_i: int | None = None
+
+    def draw(self) -> None:
+        if curses.COLS < CURSES_COLS_MIN_VALUE:
+            return
+
+        win = self.win
+        width = curses.COLS - 1
+        offset = width // 3
+
+        if self.prompt:
+            # 12: Prompt's minimum typing space.
+            prompt_text = truncate(self.prompt, width - 12)
+            if prompt_text is None:
+                prompt_text = '«' + self.prompt[-1]
+        else:
+            prompt_text = ''
+
+        y = curses.LINES - 1
+
+        win.move(y, 0)
+        win.clrtoeol()
+
+        visual_cursor = len(prompt_text) + self._cursor
+        if visual_cursor < width:
+            win.insstr(y, 0, prompt_text)
+            if len(self._entered) > width - len(prompt_text):
+                text = f'{self._entered[:width - len(prompt_text)]}»'
+            else:
+                text = ''.join(self._entered)
+            x = len(prompt_text)
+        else:
+            visual_cursor -= len(prompt_text)
+            while visual_cursor >= width:
+                visual_cursor = visual_cursor - width + offset
+
+            start = self._cursor - visual_cursor
+            if start + width > len(self._entered):
+                text = f'«{self._entered[start + 1:start + width]}'
+            else:
+                text = f'«{self._entered[start + 1:start + width]}»'
+            x = 0
+
+        win.insstr(y, x, text)
+        win.move(y, visual_cursor)
+
+    def resize(self) -> None:
+        self.screen.resize()
+
+    def current_word(self) -> str:
+        return self._entered
+
+    # Movement
+    def left(self) -> None:
+        if self._cursor > 0:
+            self._cursor -= 1
+
+    def right(self) -> None:
+        if self._cursor < len(self._entered):
+            self._cursor += 1
+
+    def home(self) -> None:
+        self._cursor = 0
+
+    def end(self) -> None:
+        self._cursor = len(self._entered)
+
+    def _jump(self, start: int, end: int, step: int) -> int:
+        nskipped = 0
+        skip = True
+        for i in range(start, end, step):
+            c = self._entered[i]
+            if c in WORD_SEPARATORS:
+                if skip:
+                    nskipped += 1
+                else:
+                    break
+            else:
+                nskipped += 1
+                skip = False
+
+        return nskipped
+
+    def ctrl_left(self) -> None:
+        self._cursor -= self._jump(self._cursor - 1, -1, -1)
+
+    def ctrl_right(self) -> None:
+        self._cursor += self._jump(self._cursor, len(self._entered), 1)
+
+    # Insertion and deletion
+    def insert(self, s: str) -> None:
+        self._entered = (
+            self._entered[:self._cursor] + s + self._entered[self._cursor:]
+        )
+        self._cursor += len(s)
+
+    def clear(self) -> None:
+        self._entered = ''
+        self._cursor = 0
+
+    def clear_insert(self, s: str) -> None:
+        self.clear()
+        self.insert(s)
+
+    def _delete(self, start: int, n: int) -> None:
+        self._entered = self._entered[:start] + self._entered[start + n:]
+
+    def delete(self) -> None:
+        self._delete(self._cursor, 1)
+
+    def backspace(self) -> None:
+        if self._cursor:
+            self._cursor -= 1
+            self._delete(self._cursor, 1)
+
+    def ctrl_backspace(self) -> None:
+        if self._cursor:
+            nskipped = self._jump(self._cursor - 1, -1, -1)
+            self._cursor -= nskipped
+            self._delete(self._cursor, nskipped)
+
+    def ctrl_k(self) -> None:
+        self._entered = self._entered[:self._cursor]
+
+    def ctrl_u(self) -> None:
+        self._entered = self._entered[self._cursor:]
+        self._cursor = 0
+
+    def ctrl_t(self) -> None:
+        # Ignore only trailing whitespace to keep things simple.
+        entered = self._entered.rstrip()
+        if self._cursor > len(entered):
+            self._cursor = len(entered)
+
+        left = entered.rfind(' ', 0, self._cursor)
+        left = left + 1 if ~left else 0
+
+        right = entered.find(' ', self._cursor)
+        right = right if ~right else len(entered)
+        if left == right:
+            # multiple spaces with cursor on top e.g. 'word [ ]word'
+            return
+
+        self._entered = entered[left:right]
+        self._cursor = len(self._entered)
+
+    ACTIONS: Mapping[str, Callable[[Prompt], None]] = {
+        'KEY_RESIZE': resize,       '^L': resize,
+        'KEY_LEFT': left,           '^B': left,
+        'KEY_RIGHT': right,         '^F': right,
+        'KEY_HOME': home,           '^A': home,
+        'KEY_END': end,             '^E': end,
+        'kLFT5': ctrl_left,         'kLFT3': ctrl_left,
+        'kRIT5': ctrl_right,        'kRIT3': ctrl_right,
+        'KEY_DC': delete,           '^D': delete,
+        'KEY_BACKSPACE': backspace,
+        '^W': ctrl_backspace,       '^H': ctrl_backspace,
+        '^K': ctrl_k,
+        '^U': ctrl_u,
+        '^T': ctrl_t,
+    }
+
+    COMPLETION_NEXT_KEYS = ('^I', '^P')
+    COMPLETION_PREV_KEYS = ('KEY_BTAB', '^N')
+
+    def _run(self, cmenu: CompletionMenu) -> str | None:
+        entered_before_completion = self._entered
+        cmenu.complete(entered_before_completion)
+
+        while True:
+            if cmenu.has_completions():
+                t = self.screen.margin_bot
+                self.screen.margin_bot += cmenu.height()
+                self.screen.draw()
+                self.screen.margin_bot = t
+                cmenu.draw()
+            else:
+                self.screen.draw()
+
+            self.draw()
+
+            key, cntrl_char = norm_wch(self.win.get_wch())
+            if not cntrl_char:
+                self.insert(key)
+                cmenu.complete(self.current_word())
+
+            elif key in Prompt.ACTIONS:
+                Prompt.ACTIONS[key](self)
+                if key == 'KEY_RESIZE':
+                    cmenu.resize()
+                else:
+                    cmenu.complete(self.current_word())
+
+            elif key == 'KEY_UP':
+                if not self._up_arrow_entries:
+                    continue
+                if self._up_arrow_i is None:
+                    self._up_arrow_i = 0
+                elif self._up_arrow_i < len(self._up_arrow_entries) - 1:
+                    self._up_arrow_i += 1
+
+                self.clear_insert(self._up_arrow_entries[self._up_arrow_i])
+                cmenu.complete(self.current_word())
+
+            elif key == 'KEY_DOWN':
+                if not self._up_arrow_entries or self._up_arrow_i is None:
+                    continue
+                if self._up_arrow_i <= 0:
+                    self._up_arrow_i = None
+                    entry = ''
+                else:
+                    self._up_arrow_i -= 1
+                    entry = self._up_arrow_entries[self._up_arrow_i]
+
+                self.clear_insert(entry)
+                cmenu.complete(self.current_word())
+
+            elif (
+                   key in Prompt.COMPLETION_NEXT_KEYS
+                or key in Prompt.COMPLETION_PREV_KEYS
+            ):
+                if cmenu.cur is None:
+                    entered_before_completion = self._entered
+
+                if key in Prompt.COMPLETION_NEXT_KEYS:
+                    r = cmenu.next()
+                else:
+                    r = cmenu.prev()
+                if r.completion is None:
+                    if r.wrapped:
+                        self.clear_insert(entered_before_completion)
+                    else:
+                        pass  # no completion matches
+                else:
+                    self.clear_insert(r.completion)
+
+            elif key in {'^J', '^M'}:
+                ret = self._entered
+                self.clear()
+                return ret
+
+            elif key in {'^C', '^\\'}:
+                if cmenu.cur is None:
+                    return None
+                else:
+                    self.clear_insert(entered_before_completion)
+                    cmenu.complete(self.current_word())
+
+    def run(self, cmenu: CompletionMenu) -> str | None:
+        curses.raw()
+        show_cursor()
+        try:
+            return self._run(cmenu)
+        finally:
+            hide_cursor()
+            curses.cbreak()
+
+
+class Screen:
+    def __init__(self, win: curses._CursesWindow) -> None:
+        self.win = win
+        self.errlog: list[str] = []
+        self.margin_bot = 0
+
+    def height(self) -> int:
+        r = curses.LINES - 1 - self.margin_bot
+        return r if r > 1 else 1
+
+    def draw(self) -> None:
+        if curses.COLS < CURSES_COLS_MIN_VALUE:
+            return
+
+        win = self.win
+        height = self.height()
+        width = curses.COLS - 1
+        red = curses.color_pair(curses.COLOR_RED)
+
+        win.erase()
+
+        try:
+            for y, line in enumerate(self.errlog):
+                text = truncate(line, width)
+                if text is None:
+                    return
+
+                win.addstr(y, 0, text, red)
+                if y > height:
+                    return
+        except curses.error:  # window too small
+            return
+
+        win.hline(height - 1, 0, curses.ACS_HLINE, curses.COLS)
+
+    def resize(self) -> None:
+        curses.update_lines_cols()
+
+
+def err(screen: Screen, cmenu: CompletionMenu, msg: str) -> None:
+    if len(screen.errlog) >= MAX_ERRLOG_HEIGHT:
+        del screen.errlog[0]
+
+    screen.errlog.append(msg)
+    cmenu.reserved_space = min(cmenu.reserved_space + 1, MAX_ERRLOG_HEIGHT)
+
+
+NEXT  = 1
+AGAIN = 2
+EXIT  = 3
+
+
+def _rename(cmenu: CompletionMenu, file: str, new_file: str) -> None:
+    os.rename(file, new_file)
+    cmenu.remove_entry(file)
+    cmenu.add_entry(new_file)
+
+
+def do_rename(
+        screen: Screen,
+        cmenu: CompletionMenu,
+        file: str,
+        up_arrow_entries: deque[str]
+) -> int:
+    typed = Prompt(
+        screen,
+        f'Rename {file!r} to: ',
+        up_arrow_entries=up_arrow_entries
+    ).run(cmenu)
+    if typed is None:
+        return EXIT
+
+    typed = typed.strip().rstrip(PATH_SEP)
+    up_arrow_entries.appendleft(typed)
+
+    if typed and file != typed:
+        if PATH_SEP in typed:
+            new_file = typed
+        else:
+            new_file = os.path.join(os.path.dirname(file), typed)
+
+        if os.path.exists(new_file):
+            err(screen, cmenu, f'{file!r} > {new_file!r}: such file already exists')
+            return AGAIN
+
+        if PATH_SEP in file:
+            if PATH_SEP in new_file:
+                prefix = os.path.commonpath((file, new_file))
+                filedir = os.path.dirname(file)
+                new_filedir = os.path.dirname(new_file)
+                with open('log.log', 'a') as f:
+                    print(prefix, filedir, new_filedir, file=f)
+                if prefix == filedir == new_filedir:
+                    _rename(cmenu, file, new_file)
+                else:
+                    err(screen, cmenu, f'{file!r} > {new_file!r}: no common path')
+                    return AGAIN
+            else:
+                _rename(cmenu, file, new_file)
+        else:
+            if PATH_SEP in new_file:
+                try:
+                    _rename(cmenu, file, new_file)
+                except FileNotFoundError:
+                    err(screen, cmenu, f'{file!r} > {new_file!r}: no such directory')
+                    return AGAIN
+            else:
+                _rename(cmenu, file, new_file)
+    else:
+        err(screen, cmenu, f'{file!r}: skipping...')
+        screen.draw()
+
+    return NEXT
+
+
+def cleanup(p: subprocess.Popen[str]) -> None:
+    p.terminate()
+    try:
+        p.wait(1)
+    except:
+        p.kill()
+
+
+def curses_main(win: curses._CursesWindow, cmd: str, files: list[str]) -> int:
+    screen = Screen(win)
+    cmenu = CompletionMenu(win, deque(files))
+    up_arrow_entries = deque()
+    for file in files:
+        p = subprocess.Popen(
+            f'{cmd} {shlex.quote(file)}',
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            encoding='UTF-8',
+            shell=True
+        )
+
+        while True:
+            ret = do_rename(screen, cmenu, file, up_arrow_entries)
+            if ret == NEXT:
+                cleanup(p)
+                curses.napms(75)
+                break
+            elif ret == AGAIN:
+                continue
+            elif ret == EXIT:
+                cleanup(p)
+                return 0
+            else:
+                raise AssertionError('unreachable')
+
+    return 0
+
+
+def usage() -> int:
+    sys.stderr.write('usage: rename-tool -e <command> [files...]\n')
+    return 2
+
+
+def main() -> int:
+    try:
+        f_e = sys.argv[1]
+    except IndexError:
+        return usage()
+    else:
+        if f_e != '-e':
+            return usage()
+
+    try:
+        cmd = sys.argv[2]
+    except IndexError:
+        return usage()
+
+    files = sys.argv[3:]
+    if not files:
+        return usage()
+
+    stdscr = curses.initscr()
+    try:
+        stdscr.keypad(True)
+
+        curses.nonl()
+        curses.cbreak()
+        curses.noecho()
+
+        try:
+            curses.start_color()
+        except curses.error:
+            pass
+        try:
+            curses.use_default_colors()
+        except curses.error:
+            pass
+
+        for i in range(8):
+            curses.init_pair(i, i, -1)
+
+        return curses_main(stdscr, cmd, files)
+    finally:
+        curses.endwin()
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
