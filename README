@@ -25,6 +25,24 @@ Scripts in ~/bin
   Dependencies
     * python (3.8+)
 
+- dirg
+    Group file paths by the directories they belong to.  File paths
+    should be newline delimited and provided as standard input.
+  Options
+    -a  sort alphabetically
+    -c  show file count per directory
+    -h  display help and exit
+  Usage
+    $ <cmd> | dirg [-a] [-c] [-h]
+    $ locate path | dirg -c
+    $ find . -type f | dirg -ac
+  Alternatives
+    If a more readable tree output is preferred
+    the tree(1) utility should be used.
+    $ <cmd> | tree --fromfile -d
+  Dependencies
+    * python (3.7+)
+
 - grepalign
     Align every line of grep output to the first colored match.
   Usage
