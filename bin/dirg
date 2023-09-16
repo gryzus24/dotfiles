@@ -1,0 +1,72 @@
+#!/usr/bin/python3 -S
+from __future__ import annotations
+
+import os
+import sys
+
+
+def usage() -> int:
+    sys.stdout.write(
+        'usage: dirg [-a] [-c] [-h] <newline delimited paths from stdin>\n'
+        '  -a  sort alphabetically\n'
+        '  -c  show file count per directory\n'
+        '  -h  display this help and exit\n'
+    )
+    return 2
+
+
+def main() -> int:
+    f_a = f_c = False
+    for arg in sys.argv[1:]:
+        if arg == '-a':
+            f_a = True
+        elif arg == '-c':
+            f_c = True
+        elif arg in {'-ac', '-ca'}:
+            f_a = f_c = True
+        elif arg == '-h':
+            return usage()
+
+    o = sys.stdout
+    sep = os.path.sep
+    isfile = os.path.isfile
+    dirname = os.path.dirname
+
+    c: dict[str, int] = {}
+    for line in map(str.strip, sys.stdin):
+        line = line.rstrip(sep)
+        if isfile(line):
+            dname = dirname(line)
+            if dname in c:
+                c[dname] += 1
+            else:
+                c[dname] = 1
+
+    if not c:
+        return 0
+
+    if f_a:
+        r = sorted(c.items())
+    else:
+        r = sorted(c.items(), key=lambda x: (x[1], x[0]))
+
+    if f_c:
+        if f_a:
+            align = len(str(max(c.values())))
+        else:
+            align = len(str(r[-1][1]))
+
+        for dname, cnt in r:
+            o.write(f'{cnt:{align}} {dname}\n')
+    else:
+        for dname, _ in r:
+            o.write(f'{dname}\n')
+
+    return 0
+
+
+if __name__ == '__main__':
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        pass
