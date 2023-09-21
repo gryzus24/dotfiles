@@ -4,9 +4,7 @@ DEVICE='SynPS/2 Synaptics TouchPad'
 
 if xinput list-props "$DEVICE" | grep -q '	Device Enabled (165):	1'
 then
-	xinput disable "$DEVICE"
+    xinput disable "$DEVICE"
 else
-	xinput enable "$DEVICE"
+    xinput enable "$DEVICE"
 fi
-
-# vim: ts=4:sw=4:noet

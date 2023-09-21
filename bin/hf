@@ -6,7 +6,5 @@ sys.stdout.write(" ".join("".join(sys.stdin).split()))
 '
 
 fzf --exact --no-sort < "$HOME/.bash_history" \
-	| python3 -Sc "$PYSTRIP" \
-	| xclip -sel clip
-
-# vim: ts=4:sw=4:noet
+    | python3 -Sc "$PYSTRIP" \
+    | xclip -sel clip

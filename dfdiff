@@ -4,41 +4,39 @@ DFIGNORE_PATH='.dfignore'
 PY_GET_DFIGNORE="
 import sys
 with open('$DFIGNORE_PATH') as f:
-	sys.stdout.write(
-		'|'.join(
-			x + '$' for x in map(str.strip, f)
-			if x and not x.startswith('#')
-		)
-	)
+    sys.stdout.write(
+        '|'.join(
+            x + '$' for x in map(str.strip, f)
+            if x and not x.startswith('#')
+        )
+    )
 "
 
 fnames="$(git ls-files)" || exit 1
 if [ -s "$DFIGNORE_PATH" ]; then
-	ignore_pattern="$(python -Sc "$PY_GET_DFIGNORE")"
-	if [ -n "$ignore_pattern" ]; then
-		fnames="$(printf '%s' "$fnames" | grep -Ev "$ignore_pattern")"
-	fi
+    ignore_pattern="$(python -Sc "$PY_GET_DFIGNORE")"
+    if [ -n "$ignore_pattern" ]; then
+        fnames="$(printf '%s' "$fnames" | grep -Ev "$ignore_pattern")"
+    fi
 fi
 
 if [ -z "$fnames" ]; then
-	echo "$(basename "$0"): no files to compare"
-	exit 1
+    echo "$(basename "$0"): no files to compare"
+    exit 1
 fi
 
 exec 3<&0
 printf '%s\n' "$fnames" | while read -r file; do
-	home_file="$HOME/$file"
+    home_file="$HOME/$file"
 
-	# Continue if files do not differ.
-	diff -q "$home_file" "$file" >/dev/null && continue
+    # Continue if files do not differ.
+    diff -q "$home_file" "$file" >/dev/null && continue
 
-	printf '%s	%s\n' "$home_file" "$file"
-	printf 'Open in vimdiff [Y/n]: ' >&2
-	read -r ans <&3
-	if [ -z "$ans" ] || [ "$ans" = 'y' ] || [ "$ans" = 'Y' ]; then
-		<&3 vimdiff "$home_file" "$file"
-	fi
+    printf '%s\t%s\n' "$home_file" "$file"
+    printf 'Open in vimdiff [Y/n]: ' >&2
+    read -r ans <&3
+    if [ -z "$ans" ] || [ "$ans" = 'y' ] || [ "$ans" = 'Y' ]; then
+        <&3 vimdiff "$home_file" "$file"
+    fi
 done
 exec 3<&-
-
-# vim: ft=sh:ts=4:sw=4:noet
