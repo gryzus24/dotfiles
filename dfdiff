@@ -27,16 +27,26 @@ fi
 
 exec 3<&0
 printf '%s\n' "$fnames" | while read -r file; do
-    home_file="$HOME/$file"
+    home_file_path="$HOME/$file"
 
     # Continue if files do not differ.
-    diff -q "$home_file" "$file" >/dev/null && continue
+    diff -q "$home_file_path" "$file" >/dev/null && continue
 
-    printf '%s\t%s\n' "$home_file" "$file"
+    if [ -e "$home_file_path" ] && file -b "$home_file_path" | grep -q ELF; then
+        if [ "$(dirname "$home_file_path")" = "$HOME/bin" ]; then
+            home_file_path="$HOME/bin/overridden/$(basename "$home_file_path")"
+            diff -q "$home_file_path" "$file" >/dev/null && continue
+        else
+            printf '%s\n' "error: ELF file $home_file_path not in ~/bin"
+            exit 1
+        fi
+    fi
+
+    printf '%s\t%s\n' "$home_file_path" "$file"
     printf 'Open in vimdiff [Y/n]: ' >&2
     read -r ans <&3
     if [ -z "$ans" ] || [ "$ans" = 'y' ] || [ "$ans" = 'Y' ]; then
-        <&3 vimdiff "$home_file" "$file"
+        <&3 vimdiff "$home_file_path" "$file"
     fi
 done
 exec 3<&-
