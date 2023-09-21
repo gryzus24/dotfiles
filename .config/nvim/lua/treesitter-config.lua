@@ -1,5 +1,5 @@
 require('nvim-treesitter.configs').setup({
-    ensure_installed = {"python", "c"},
+    ensure_installed = {"c", "python", "zig"},
     -- ignore_install = {},
     highlight = {
     	enable = true,

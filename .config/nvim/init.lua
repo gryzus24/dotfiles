@@ -29,6 +29,7 @@ vim.keymap.set('n', '<leader>python<cr>',     ':-1read ~/.vim/snippets/python.sn
 
 vim.keymap.set('n', '<cr>', ':noh<cr><cr>')
 vim.keymap.set('n', '<leader>am', ':w | !make')
+vim.keymap.set('v', '<bs>', '"_x')
 
 local Plug = vim.fn['plug#']
 vim.call('plug#begin', '~/.local/share/nvim/plugged')
@@ -49,6 +50,11 @@ require('Comment').setup({
     mappings = {
         extra = false
     },
+})
+
+require('treesitter-context').setup({
+    enable = false,
+    multiline_threshold = 1,
 })
 
 vim.cmd[[colorscheme habamax]]

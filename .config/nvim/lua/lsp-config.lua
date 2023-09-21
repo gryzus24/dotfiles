@@ -39,3 +39,7 @@ require('lspconfig')['pyright'].setup({
 require('lspconfig')['clangd'].setup({
     on_attach = on_attach
 })
+
+require('lspconfig')['zls'].setup({
+    on_attach = on_attach
+})
