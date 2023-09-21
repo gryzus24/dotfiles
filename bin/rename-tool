@@ -620,7 +620,8 @@ def curses_main(win: curses._CursesWindow, cmd: str, files: list[str]) -> int:
 
 
 def usage() -> int:
-    sys.stderr.write('usage: rename-tool -e <command> [files...]\n')
+    prog = os.path.basename(sys.argv[0])
+    sys.stderr.write(f'usage: {prog} -e <command> [files...]\n')
     return 2
 
 

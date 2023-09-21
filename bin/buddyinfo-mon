@@ -129,7 +129,7 @@ def draw(win: curses._CursesWindow, lines: list[line_t], scroll: int) -> None:
         pass
 
 
-def curses_main(win: curses._CursesWindow) -> None:
+def curses_main(win: curses._CursesWindow) -> int:
     try:
         update_delay = int(float(sys.argv[1]) * 10)
     except (IndexError, ValueError):
@@ -169,14 +169,14 @@ def curses_main(win: curses._CursesWindow) -> None:
             elif key in {b'G', b'KEY_END'}:
                 scroll = len(lines) - curses.LINES + 1
             elif key in {b'q', b'Q'}:
-                return
+                return 0
         else:
             pass  # halfdelayed
 
         prev_binfo = binfo
 
 
-def main() -> None:
+def main() -> int:
     stdscr = curses.initscr()
     try:
         stdscr.keypad(True)
@@ -201,13 +201,13 @@ def main() -> None:
         for i in range(8):
             curses.init_pair(i, i, -1)
 
-        curses_main(stdscr)
+        return curses_main(stdscr)
     finally:
         curses.endwin()
 
 
 if __name__ == '__main__':
     try:
-        main()
+        raise SystemExit(main())
     except KeyboardInterrupt:
         pass
