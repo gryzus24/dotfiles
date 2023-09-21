@@ -1,0 +1,21 @@
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const exe = b.addExecutable(.{
+        .name = "dirg",
+        .root_source_file = .{ .path = "./dirg.zig" },
+        .target = target,
+        .optimize = optimize,
+        .single_threaded = true,
+    });
+
+    if (optimize == .ReleaseFast) {
+        exe.strip = true;
+        exe.omit_frame_pointer = true;
+    }
+
+    b.installArtifact(exe);
+}
