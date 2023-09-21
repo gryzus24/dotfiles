@@ -6,11 +6,12 @@ import sys
 
 
 def usage() -> int:
+    prog = os.path.basename(sys.argv[0])
     sys.stdout.write(
-        'usage: dirg [-a] [-c] [-h] <newline delimited paths from stdin>\n'
-        '  -a  sort alphabetically\n'
-        '  -c  show file count per directory\n'
-        '  -h  display this help and exit\n'
+        f'usage: {prog} [a] [c] [h] <newline delimited paths from stdin>\n'
+        '  a  sort alphabetically\n'
+        '  c  show file count per directory\n'
+        '  h  display this help and exit\n'
     )
     return 2
 
@@ -18,46 +19,45 @@ def usage() -> int:
 def main() -> int:
     f_a = f_c = False
     for arg in sys.argv[1:]:
-        if arg == '-a':
-            f_a = True
-        elif arg == '-c':
-            f_c = True
-        elif arg in {'-ac', '-ca'}:
-            f_a = f_c = True
-        elif arg == '-h':
-            return usage()
+        for c in arg:
+            if c == 'a':
+                f_a = True
+            elif c == 'c':
+                f_c = True
+            elif c == 'h':
+                return usage()
 
     o = sys.stdout
     sep = os.path.sep
     isfile = os.path.isfile
     dirname = os.path.dirname
 
-    c: dict[str, int] = {}
+    dircnt: dict[str, int] = {}
     for line in map(str.strip, sys.stdin):
         line = line.rstrip(sep)
         if isfile(line):
             dname = dirname(line)
-            if dname in c:
-                c[dname] += 1
+            if dname in dircnt:
+                dircnt[dname] += 1
             else:
-                c[dname] = 1
+                dircnt[dname] = 1
 
-    if not c:
+    if not dircnt:
         return 0
 
     if f_a:
-        r = sorted(c.items())
+        r = sorted(dircnt.items())
     else:
-        r = sorted(c.items(), key=lambda x: (x[1], x[0]))
+        r = sorted(dircnt.items(), key=lambda x: x[1])
 
     if f_c:
         if f_a:
-            align = len(str(max(c.values())))
+            width = len(str(max(dircnt.values())))
         else:
-            align = len(str(r[-1][1]))
+            width = len(str(r[-1][1]))
 
         for dname, cnt in r:
-            o.write(f'{cnt:{align}} {dname}\n')
+            o.write(f'{cnt:{width}} {dname}\n')
     else:
         for dname, _ in r:
             o.write(f'{dname}\n')
