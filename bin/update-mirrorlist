@@ -1,44 +1,44 @@
 #!/bin/dash
 
 usage() {
-	echo \
-		"usage: $(basename "$0") [--age | --rate]\n" \
-		'  --age    sort by age (default)\n' \
-		'  --rate   sort by rate'
+    echo \
+        "usage: $(basename "$0") [--age | --rate]\n" \
+        '  --age    sort by age (default)\n' \
+        '  --rate   sort by rate'
 }
 
 sort_arg=age
 case "$1" in
-	-h|--help)
-		usage
-		exit 0
-		;;
-	--age | '')
-		sort_arg=age
-		;;
-	--rate)
-		sort_arg=rate
-		;;
-	*)
-		printf 'unrecognized option: %s\n' "$1"
-		usage
-		exit 1
-		;;
+    -h|--help)
+        usage
+        exit 0
+        ;;
+    --age | '')
+        sort_arg=age
+        ;;
+    --rate)
+        sort_arg=rate
+        ;;
+    *)
+        printf 'unrecognized option: %s\n' "$1"
+        usage
+        exit 1
+        ;;
 esac
 
 if [ "$(id -u)" -ne 0 ]; then
-	printf '%s: must be root\n' "$(basename "$0")"
-	exit 1
+    printf '%s: must be root\n' "$(basename "$0")"
+    exit 1
 fi
 
 mlist=/etc/pacman.d/mirrorlist
 
 reflector \
-	--country PL,DE,CZ,SK,GB,FR \
-	--latest 6 \
-	--sort "${sort_arg}" \
-	--protocol https \
-	--save "${mlist}.tmp"
+    --country PL,DE,CZ,SK,GB,FR \
+    --latest 6 \
+    --sort "${sort_arg}" \
+    --protocol https \
+    --save "${mlist}.tmp"
 
 mv "${mlist}" "${mlist}.bak"
 mv "${mlist}.tmp" "${mlist}"
@@ -46,5 +46,3 @@ mv "${mlist}.tmp" "${mlist}"
 rm -f "${mlist}.pacnew"
 
 diff --color=auto -u "${mlist}.bak" "${mlist}"
-
-# vim: ts=4:sw=4:noet

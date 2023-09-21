@@ -1,11 +1,9 @@
 #!/bin/dash
 
 if pidof unclutter >/dev/null; then
-	xdotool mousemove_relative --sync 10 0
+    xdotool mousemove_relative --sync 10 0
 fi
 
 scrot \
-	--select '/tmp/%F_%T_$wx$h.png' \
-	--exec 'xclip -sel clip -target image/png -i $f'
-
-# vim: ts=4:sw=4:noet
+    --select '/tmp/%F_%T_$wx$h.png' \
+    --exec 'xclip -sel clip -target image/png -i $f'
