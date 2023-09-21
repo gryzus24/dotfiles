@@ -24,8 +24,8 @@ configuration {
 
   kb-row-up:           "Super+k,Control+k,Up,Control+p";
   kb-row-down:         "Super+j,Control+j,Down,Control+n";
-  kb-mode-next:        "Super+l,Control+l,Shift+Right,Control+Tab";
-  kb-mode-previous:    "Super+h,Control+h,Shift+Left";
+  kb-mode-next:        "Super+l,Control+l,Alt+l,Shift+Right,Control+Tab";
+  kb-mode-previous:    "Super+h,Control+h,Alt+h,Shift+Left";
   kb-cancel:           "Escape,Control+bracketleft,Super+1,Super+2,Super+3,Super+4,Super+5,Super+6,Super+7";
 }
 
