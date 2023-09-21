@@ -1,4 +1,5 @@
 .dfignore
+README
 dfdiff
 htoprc
 touchpad-toggle
