@@ -30,7 +30,6 @@ bind -x '"\C-l":clear -x'
 
 bind 'set completion-ignore-case on'
 
-shopt -s autocd      # change to named directory
 shopt -s cdspell     # autocorrects cd misspellings
 shopt -s cmdhist     # save multi-line commands in history as single line
 shopt -s dotglob     # include .files in pathname expansion
