@@ -2,6 +2,8 @@
 #define FgColor linen
 #define DefaultFont 5
 
+Xcursor.size: 32
+
 XTerm.termName: xterm-256color
 XTerm.VT100.geometry: 79x24
 XTerm.VT100.backarrowKey: false
