@@ -19,6 +19,9 @@ alias la='ls -A'
 
 # other
 alias acti='. venv/bin/activate'
+alias ffmpeg='ffmpeg -hide_banner'
+alias ffplay='ffplay -hide_banner'
+alias ffprobe='ffprobe -hide_banner'
 alias nal='$EDITOR $HOME/.config/alacritty/alacritty.yml'
 alias zath='devour zathura'
 
