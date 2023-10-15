@@ -32,14 +32,6 @@ local on_attach = function(client, bufnr)
     end, bufopts)
 end
 
-require('lspconfig')['pyright'].setup({
-    on_attach = on_attach
-})
-
-require('lspconfig')['clangd'].setup({
-    on_attach = on_attach
-})
-
-require('lspconfig')['zls'].setup({
-    on_attach = on_attach
-})
+require('lspconfig')['pyright'].setup({on_attach = on_attach})
+require('lspconfig')['clangd'].setup({on_attach = on_attach})
+require('lspconfig')['zls'].setup({on_attach = on_attach})
