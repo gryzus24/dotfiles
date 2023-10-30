@@ -19,6 +19,7 @@ set.wildignorecase = true
 set.completeopt = 'menu'
 
 set.path = '**'
+set.grepprg = 'git grep -n'
 
 function set_snippet(name)
     vim.keymap.set(
