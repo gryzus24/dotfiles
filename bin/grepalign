@@ -4,7 +4,10 @@ from __future__ import annotations
 import os
 import sys
 
+# Color of "matching on selected line"
 DEFAULT_MS = '\033[01;31m'  #]
+
+# Color of "separators between selected line fields"
 DEFAULT_SE = '\033[36m\033[K:\033[m\033[K'  #]]]]
 
 
@@ -16,7 +19,7 @@ def main() -> int:
     else:
         c = colors.split(':')
         mses = [
-            f'\033[{x.partition("=")[2]}m\033[K'  #]
+            f'\033[{x.partition("=")[2]}m\033[K'  #]]
             for x in c if x.startswith(('mt=', 'ms='))
         ]
         ses = [
@@ -27,24 +30,32 @@ def main() -> int:
         se_esc = ses.pop() if ses else DEFAULT_SE
 
     parts = []
-    head_align = fileinfo_align = 0
+    before_ms_align = fileinfo_align = 0
     for line in sys.stdin:
-        head, sep, tail = line.partition(ms_esc)
-        fileinfo, fsep, head = head.rpartition(se_esc)
-        if fsep:
-            fileinfo += fsep
+        before_ms, ms_sep, match_and_rest = line.partition(ms_esc)
+        fileinfo, se_sep, before_ms = before_ms.rpartition(se_esc)
+        if se_sep:
+            fileinfo += se_sep
             if len(fileinfo) > fileinfo_align:
                 fileinfo_align = len(fileinfo)
 
-        head = head.lstrip()
-        if len(head) > head_align:
-            head_align = len(head)
+        before_ms = before_ms.lstrip()
+        if '\t' in before_ms:
+            before_ms = before_ms.replace('\t', '    ')
 
-        parts.append((fileinfo, head, sep, tail))
+        if len(before_ms) > before_ms_align:
+            before_ms_align = len(before_ms)
+
+        parts.append((fileinfo, before_ms, ms_sep, match_and_rest))
 
     o = sys.stdout
-    for fileinfo, head, sep, tail in parts:
-        o.write(f'{fileinfo:{fileinfo_align}}{head.rjust(head_align)}{sep}{tail}')
+    for fileinfo, before_ms, ms_sep, match_and_rest in parts:
+        o.write(
+            f'{fileinfo:{fileinfo_align}}'
+            f'{before_ms.rjust(before_ms_align)}'
+            f'{ms_sep}'
+            f'{match_and_rest}'
+        )
 
     return 0
 
