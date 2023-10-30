@@ -17,6 +17,7 @@ white='\033[97m'
 yellow='\033[33m'
 
 current_git_branch() {
+  [[ -d '.git' ]] || return
   local t
   t="$(git branch --show-current 2>/dev/null)" || return
   printf '(%s) ' "$t"
