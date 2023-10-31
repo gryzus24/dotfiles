@@ -4,10 +4,10 @@ from __future__ import annotations
 import os
 import sys
 
-# Color of "matching on selected line"
+# Color of "matching non-empty text on a selected line".
 DEFAULT_MS = '\033[01;31m'  #]
 
-# Color of "separators between selected line fields"
+# Color of "separators that are inserted between selected line fields".
 DEFAULT_SE = '\033[36m\033[K:\033[m\033[K'  #]]]]
 
 
@@ -30,7 +30,7 @@ def main() -> int:
         se_esc = ses.pop() if ses else DEFAULT_SE
 
     parts = []
-    before_ms_align = fileinfo_align = 0
+    fileinfo_align = before_ms_align = 0
     for line in sys.stdin:
         before_ms, ms_sep, match_and_rest = line.partition(ms_esc)
         fileinfo, se_sep, before_ms = before_ms.rpartition(se_esc)
@@ -46,16 +46,48 @@ def main() -> int:
         if len(before_ms) > before_ms_align:
             before_ms_align = len(before_ms)
 
-        parts.append((fileinfo, before_ms, ms_sep, match_and_rest))
+        parts.append((fileinfo, before_ms, ms_sep + match_and_rest))
+
+    if not parts:
+        return 1
+
+    can_squeeze = True
+    max_squeeze = 1 << 31  # some big number
+    for fileinfo, before_ms, _ in parts:
+        fileinfo_space = fileinfo_align - len(fileinfo)
+        before_ms_space = before_ms_align - len(before_ms)
+
+        line_max_squeeze = fileinfo_space + before_ms_space
+        if not line_max_squeeze:
+            can_squeeze = False
+            break
+
+        if line_max_squeeze < max_squeeze:
+            max_squeeze = line_max_squeeze
 
     o = sys.stdout
-    for fileinfo, before_ms, ms_sep, match_and_rest in parts:
-        o.write(
-            f'{fileinfo:{fileinfo_align}}'
-            f'{before_ms.rjust(before_ms_align)}'
-            f'{ms_sep}'
-            f'{match_and_rest}'
-        )
+    if can_squeeze:
+        for fileinfo, before_ms, match_and_rest in parts:
+            fileinfo_space = fileinfo_align - len(fileinfo)
+            if max_squeeze > fileinfo_space:
+                fileinfo_squeeze = fileinfo_space
+                before_ms_squeeze = max_squeeze - fileinfo_space
+            else:
+                fileinfo_squeeze = max_squeeze
+                before_ms_squeeze = 0
+
+            o.write(
+                f'{fileinfo:{fileinfo_align - fileinfo_squeeze}}'
+                f'{before_ms:>{before_ms_align - before_ms_squeeze}}'
+                f'{match_and_rest}'
+            )
+    else:
+        for fileinfo, before_ms, match_and_rest in parts:
+            o.write(
+                f'{fileinfo:{fileinfo_align}}'
+                f'{before_ms:>{before_ms_align}}'
+                f'{match_and_rest}'
+            )
 
     return 0
 
