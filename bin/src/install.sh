@@ -18,5 +18,6 @@ for prog in $PROGS; do
         mkdir -p "$OVRDIR"
         (set -x; mv -n "$bin_path" "$OVRDIR/$prog")
     fi
-    (set -x; zig build --prefix "$PREFIX" -Doptimize=ReleaseFast)
+    ./build.sh
+    (set -x; mv "$prog" "$bin_path")
 done
