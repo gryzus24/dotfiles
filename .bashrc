@@ -13,14 +13,11 @@ green='\033[32m'
 magenta='\033[35m'
 reset='\033[0m'
 
-current_git_branch() {
-  if [ -d .git ]; then
-      local t
-      t="$(git branch --show-current 2>/dev/null)" || return
-      printf '(%s) ' "$t"
-  fi
-}
-PS1="\$(current_git_branch)$magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
+if hash cgb; then
+    PS1="\$(cgb)$magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
+else
+    PS1="(no cgb) $magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
+fi
 
 set -o vi
 
