@@ -105,24 +105,26 @@ void write_branch_name(char *buf256, int githead_fd)
         --ptr;
     *ptr = '(';
 
+#if 1
     write(1, ptr, start255 + nread - ptr + 1);
+#else
+    /* GCC seems to generate an unnecessary movzx in the while loop
+     * after parenthesizing this calculation - possible bug? */
+    write(1, ptr, (start255 + nread) - (ptr - 1));
+#endif
 }
 
-bool should_check_dir(const char *s, int i)
+bool is_dir_home(const char *s, int i)
 {
-    /* is at root? */
-    if (i <= 1)
-        return false;
-
     if (i == 6) {
-        return !(
+        return (
                s[i - 2] == 'e'
             && s[i - 3] == 'm'
             && s[i - 4] == 'o'
             && s[i - 5] == 'h'
         );
     }
-    return true;
+    return false;
 }
 
 noreturn void _start(void)
@@ -154,9 +156,9 @@ noreturn void _start(void)
         while (buf[--i - 1] != '/')
             ;
 
-    } while (should_check_dir(buf, i));
+    } while (i > 1 && !is_dir_home(buf, i));
 
     /* reached / or /home,
-     * assume there is no /.git nor /home/.git directory and terminate */
+     * assume there is no /.git nor /home/.git directory and exit */
     exit(BRANCH_NOT_FOUND);
 }
