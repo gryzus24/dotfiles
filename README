@@ -19,6 +19,21 @@ Scripts in ~/bin
   Dependencies
     * python (3.7+)
 
+- cgb
+    Print the name of the current git branch in the format: "($branch) "
+    or nothing if not inside a git repository. It is meant to be used
+    inside of PS1 or PROMPT_COMMAND. Compared to other solutions it is
+    FAST - ~650 bytes of machine code that glues together a few system
+    calls packed into an <8K executable for any x86_64 Linux - your shell
+    prompt will never feel sluggish again.
+  Usage
+    In ~/.bashrc for example:
+      PS1="\$(cgb)[\u \w]\n$ "
+  Build dependencies
+    * gcc/clang
+  Installation
+    $ PROGS=cgb ~/bin/src/install.sh
+
 - deduplicate-bash-history
     Remove duplicates from the ~/.bash_history file.
     Only the most recently used commands are kept.
