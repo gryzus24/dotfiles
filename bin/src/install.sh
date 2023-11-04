@@ -6,7 +6,7 @@ SRCDIR="$BINDIR/src"
 OVRDIR="$BINDIR/overridden"
 
 if [ -z "${PROGS+x}" ]; then
-    PROGS='dirg'
+    PROGS='dirg cgb'
 fi
 
 IFS=' '
