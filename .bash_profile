@@ -2,8 +2,6 @@
 # ~/.bash_profile
 #
 
-[[ -f "$HOME/.bashrc" ]] && . "$HOME/.bashrc"
-
 # In case some program does not fall back on the default values.
 export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_CONFIG_HOME="$HOME/.config"
@@ -21,6 +19,8 @@ export LESS=-iR
 
 [[ -d "$HOME/.local/bin" ]] && PATH="$HOME/.local/bin:$PATH"
 [[ -d "$HOME/bin" ]] && PATH="$HOME/bin:$PATH"
+
+[[ -f "$HOME/.bashrc" ]] && . "$HOME/.bashrc"
 
 if [ -z "$DISPLAY" ] && [ "$XDG_VTNR" -eq 1 ]; then
     exec startx
