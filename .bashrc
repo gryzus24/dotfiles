@@ -13,11 +13,8 @@ green='\033[32m'
 magenta='\033[35m'
 reset='\033[0m'
 
-if hash cgb; then
-    PS1="\$(cgb)$magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
-else
-    PS1="(no cgb) $magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
-fi
+PS1="$magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
+hash cgb && PROMPT_COMMAND+=(cgb)
 
 set -o vi
 
