@@ -7,13 +7,12 @@
 #include <stdbool.h>
 
 #define arr_count(a) (sizeof(a) / sizeof((a)[0]))
-#define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 #define noreturn __attribute__((noreturn))
 
 noreturn void exit(int code)
 {
-    asm volatile (
+    __asm__ volatile (
         "syscall"
         :
         : "a"(__NR_exit), "D"(code)
@@ -26,14 +25,14 @@ long syscall_check(unsigned long r)
 {
     if (r > -4096UL)
         return -1;
-    return r;
+    return (long)r;
 }
 
 unsigned long syscall3(long nr, long a, long b, long c)
 {
     unsigned long ret;
 
-    asm volatile (
+    __asm__ volatile (
         "syscall"
         : "=a"(ret)
         : "a"(nr), "D"(a), "S"(b), "d"(c)
@@ -44,19 +43,19 @@ unsigned long syscall3(long nr, long a, long b, long c)
 
 long read(int fd, char *buf, unsigned long n)
 {
-    return syscall_check(syscall3(__NR_read, fd, (long)buf, n));
+    return syscall_check(syscall3(__NR_read, fd, (long)buf, (long)n));
 }
 
 long write(int fd, const char *buf, unsigned long n)
 {
-    return syscall_check(syscall3(__NR_write, fd, (long)buf, n));
+    return syscall_check(syscall3(__NR_write, fd, (long)buf, (long)n));
 }
 
 long open_rdonly(const char *path)
 {
     unsigned long ret;
 
-    asm volatile (
+    __asm__ volatile (
         "syscall"
         : "=a"(ret)
         : "a"(__NR_open), "D"(path), "S"(O_RDONLY | O_NOATIME)
@@ -69,7 +68,7 @@ long getcwd(char *buf, unsigned long size)
 {
     unsigned long ret;
 
-    asm volatile (
+    __asm__ volatile (
         "syscall"
         : "=a"(ret)
         : "a"(__NR_getcwd), "D"(buf), "S"(size)
@@ -106,7 +105,7 @@ void write_branch_name(char *buf256, int githead_fd)
     *ptr = '(';
 
 #if 1
-    write(1, ptr, start255 + nread - ptr + 1);
+    write(1, ptr, (unsigned long)(start255 + nread - ptr + 1));
 #else
     /* GCC seems to generate an unnecessary movzx in the while loop
      * after parenthesizing this calculation - possible bug? */
@@ -114,7 +113,7 @@ void write_branch_name(char *buf256, int githead_fd)
 #endif
 }
 
-bool is_dir_home(const char *s, int i)
+bool is_dir_home(const char *s, long i)
 {
     if (i == 6) {
         return (
@@ -130,9 +129,7 @@ bool is_dir_home(const char *s, int i)
 noreturn void _start(void)
 {
     char buf[256];
-    int i;
-    int j;
-    long fd;
+    long i, j, fd;
 
     /* i stores the index of a path separator + 1 */
     i = getcwd(buf, arr_count(buf) - GITHEAD_SIZE);
@@ -144,11 +141,11 @@ noreturn void _start(void)
 
     do {
         for (j = 0; j < GITHEAD_SIZE; ++j)
-            *(buf + i + j) = GITHEAD[j];
+            buf[i + j] = GITHEAD[j];
 
         fd = open_rdonly(buf);
         if (fd != -1) {
-            write_branch_name(buf, fd);
+            write_branch_name(buf, (int)fd);
             exit(BRANCH_FOUND);
         }
 
