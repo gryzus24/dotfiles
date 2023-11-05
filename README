@@ -24,7 +24,7 @@ Scripts in ~/bin
     or nothing if not inside a git repository. It is meant to be used
     inside of PROMPT_COMMAND or PS1. Compared to other solutions it is
     FAST - ~650 bytes of machine code that glues together a few system
-    calls packed into an <8K executable for any x86-64 Linux - your shell
+    calls packed into an <4K executable for any x86-64 Linux - your shell
     prompt will never feel sluggish again.
   Usage
     In ~/.bashrc PROMPT_COMMAND:
@@ -35,8 +35,8 @@ Scripts in ~/bin
     Context: In the root of a git repository.
     Setup: # perf stat -e cycles,instructions -r 100 "$@"
       __git_ps1                 (~ 11 000 000 instructions)
-      git branch --show-current (~  8 750 000 instructions)
-      cgb                       (~     95 000 instructions)
+      git branch --show-current (~  2 780 000 instructions)
+      cgb                       (~     85 000 instructions)
   Build dependencies
     * gcc/clang
   Installation
