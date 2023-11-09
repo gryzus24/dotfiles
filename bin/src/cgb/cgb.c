@@ -10,7 +10,7 @@
 #define unlikely(x) __builtin_expect(!!(x), 0)
 #define noreturn __attribute__((noreturn))
 
-noreturn void exit(int code)
+static noreturn void exit(int code)
 {
     __asm__ volatile (
         "syscall"
@@ -21,14 +21,14 @@ noreturn void exit(int code)
     __builtin_unreachable();
 }
 
-long syscall_check(unsigned long r)
+static long syscall_check(unsigned long r)
 {
     if (r > -4096UL)
         return -1;
     return (long)r;
 }
 
-unsigned long syscall3(long nr, long a, long b, long c)
+static unsigned long syscall3(long nr, long a, long b, long c)
 {
     unsigned long ret;
 
@@ -41,17 +41,17 @@ unsigned long syscall3(long nr, long a, long b, long c)
     return ret;
 }
 
-long read(int fd, char *buf, unsigned long n)
+static long read(int fd, char *buf, unsigned long n)
 {
     return syscall_check(syscall3(__NR_read, fd, (long)buf, (long)n));
 }
 
-long write(int fd, const char *buf, unsigned long n)
+static long write(int fd, const char *buf, unsigned long n)
 {
     return syscall_check(syscall3(__NR_write, fd, (long)buf, (long)n));
 }
 
-long open_rdonly(const char *path)
+static long open_rdonly(const char *path)
 {
     unsigned long ret;
 
@@ -64,7 +64,7 @@ long open_rdonly(const char *path)
     return syscall_check(ret);
 }
 
-long getcwd(char *buf, unsigned long size)
+static long getcwd(char *buf, unsigned long size)
 {
     unsigned long ret;
 
@@ -85,7 +85,7 @@ long getcwd(char *buf, unsigned long size)
 #define GETCWD_ROOT_OR_FAILED 2
 #define GITHEAD_READ_FAILED 3
 
-void write_branch_name(char *buf256, int githead_fd)
+static void write_branch_name(char *buf256, int githead_fd)
 {
     char *ptr;
     char *const start255 = buf256 + 1;
@@ -113,7 +113,7 @@ void write_branch_name(char *buf256, int githead_fd)
 #endif
 }
 
-bool is_dir_home(const char *s, long i)
+static bool is_dir_home(const char *s, long i)
 {
     if (i == 6) {
         return (
