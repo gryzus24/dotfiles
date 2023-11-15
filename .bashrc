@@ -16,12 +16,8 @@ reset='\033[0m'
 PS1="$magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
 hash cgb && PROMPT_COMMAND+=(cgb)
 
-set -o vi
-
 stty -ixon
 bind -x '"\C-l":clear -x'
-
-bind 'set completion-ignore-case on'
 
 shopt -s cdspell     # autocorrects cd misspellings
 shopt -s cmdhist     # save multi-line commands in history as single line
