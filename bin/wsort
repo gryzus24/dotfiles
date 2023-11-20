@@ -1,0 +1,38 @@
+#!/usr/bin/python3 -S
+from __future__ import annotations
+
+import re
+import sys
+
+
+def is_word(s: str) -> bool:
+    return bool(s.strip())
+
+
+def get_sorted_word_indices(strings: list[str]) -> list[int]:
+    indices = [i for i, x in enumerate(strings) if is_word(x)]
+    indices.sort(key=lambda x: strings[x])
+    return indices
+
+
+def main() -> int:
+    ws_split_re = re.compile(r'(\s+)')
+
+    o = sys.stdout
+    for line in sys.stdin:
+        strings = ws_split_re.split(line)
+        sorted_word_indices = get_sorted_word_indices(strings)
+
+        wi = 0
+        for s in strings:
+            if is_word(s):
+                o.write(strings[sorted_word_indices[wi]])
+                wi += 1
+            else:
+                o.write(s)
+
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
