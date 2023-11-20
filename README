@@ -74,9 +74,9 @@ Scripts in ~/bin
 - grepalign
     Align every line of grep output to the first colored match.
   Usage
-    generic:
+    Generic:
       $ grep --color=always [...] | grepalign
-    or with the helpers from ~/.bash_aliases:
+    Or with the helpers from ~/.bash_aliases:
       $ faketty grep --color=auto [...] | grepalign
       $ agrep [...]
   Dependencies
@@ -146,6 +146,17 @@ Scripts in ~/bin
   Dependencies
     * dash (shell)
     * reflector, diff
+
+- wsort
+    Sort words on a line or multiple lines
+    (preserves line order and whitespace).
+  Usage
+    Generic:
+      $ echo 'Ala    ma wielkiego    kota' | wsort
+    Or in Vim command-line mode afer visually selecting a line:
+      :!wsort
+  Dependencies
+    * python (3.7+)
 
 Bash functions in ~/.bash_aliases
 =================================
