@@ -2,7 +2,7 @@
  * cgb - quickly! show me my /CURRENT GIT BRANCH/
  */
 
-#include <asm-generic/fcntl.h> /* O_{RDONLY,O_NOATIME} */
+#include <asm-generic/fcntl.h> /* O_{RDONLY,NOATIME} */
 #include <asm/unistd_64.h>
 #include <stdbool.h>
 
