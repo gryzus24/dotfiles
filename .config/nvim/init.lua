@@ -1,5 +1,6 @@
 local set = vim.opt
 
+set.fsync = false
 set.guicursor = ''
 set.mouse = ''
 
