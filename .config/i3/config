@@ -61,7 +61,7 @@ bindsym $mod+Shift   +minus move scratchpad
 # equal
 bindsym $mod         +space focus mode_toggle
 bindsym $mod+Shift   +space floating toggle; \
-                            [floating] border pixel 4; \
+                            [floating] border pixel 5; \
                             [tiling] border pixel 2
 
 bindsym Control+Shift+period gaps top all set $ogap; \
