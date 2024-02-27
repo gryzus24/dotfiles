@@ -12,17 +12,20 @@ alias fgrep='grep --color=auto -F'
 alias grep='grep --color=auto'
 alias ip='ip -color=auto'
 
-# list
+# utils
 alias ls='ls --color=auto -N'
 alias l='ls -lh'
 alias la='ls -A'
+alias mv='mv -n'
 
-# other
-alias acti='. venv/bin/activate'
+# ffmpeg
 alias ffmpeg='ffmpeg -hide_banner'
 alias ffplay='ffplay -hide_banner'
 alias ffprobe='ffprobe -hide_banner'
-alias nal='$EDITOR $HOME/.config/alacritty/alacritty.yml'
+
+# other
+alias acti='. venv/bin/activate'
+alias nal='$EDITOR $HOME/.config/alacritty/alacritty.toml'
 alias zath='devour zathura'
 
 # functions
