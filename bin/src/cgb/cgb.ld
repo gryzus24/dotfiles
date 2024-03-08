@@ -1,7 +1,7 @@
 ENTRY (_start)
 
 SECTIONS {
-  . = 0x400000 + SIZEOF_HEADERS;
+  . = 0x3ff000 + SIZEOF_HEADERS;
   .note.gnu.build-id : { *(.note.gnu.build-id) }
 
   /* The /cgb/ program does not define any .rodata itself, but the compiler
