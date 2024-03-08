@@ -25,6 +25,8 @@ alias ffprobe='ffprobe -hide_banner'
 
 # other
 alias acti='. venv/bin/activate'
+alias chx='chmod +x'
+alias n='nvim'
 alias nal='$EDITOR $HOME/.config/alacritty/alacritty.toml'
 alias zath='devour zathura'
 
