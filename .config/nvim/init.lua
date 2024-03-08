@@ -1,7 +1,6 @@
 local set = vim.opt
 
 set.fsync = false
-set.guicursor = ''
 set.mouse = ''
 
 set.expandtab = true
@@ -25,7 +24,7 @@ set.grepprg = 'git grep -n'
 function set_snippet(name)
     vim.keymap.set(
         'n',
-        '<leader>'..name..'<cr>', ':-1read ~/.vim/snippets/'..name..'.snip<cr>'
+        '<leader>'..name..'<cr>', '<cmd>-1read ~/.vim/snippets/'..name..'.snip<cr>'
     )
 end
 
@@ -60,7 +59,8 @@ function nm_newline_check_close_bracket_im()
 end
 
 vim.keymap.set('n', '<leader>am', ':w | !make')
-vim.keymap.set('n', '<cr>', ':noh<cr><cr>')
+vim.keymap.set('n', '<cr>', '<cmd>noh<cr><cr>')
+vim.keymap.set('n', '<esc>', '<cmd>noh<cr>')
 vim.keymap.set('n', 'S', '"_S<left><right>')
 vim.keymap.set('i', '<cr>',
     function()
