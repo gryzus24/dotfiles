@@ -1,4 +1,4 @@
-#define BgColor #000000
+#define BgColor #0d0d0d
 #define FgColor linen
 #define DefaultFont 5
 
