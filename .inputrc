@@ -1,2 +1,4 @@
 set editing-mode vi
 set completion-ignore-case on
+
+"\C-n":"cd ..\n"
