@@ -2,6 +2,8 @@ DOC = doc
 PROG = pdflatex
 FLAGS =
 
+export SOURCE_DATE_EPOCH = 1
+
 one:
 	texfot $(PROG) $(FLAGS) $(DOC).tex
 
@@ -11,3 +13,5 @@ two:
 
 clean:
 	rm -f $(DOC).aux $(DOC).log
+
+.SILENT: one two
