@@ -14,7 +14,7 @@ magenta='\033[35m'
 reset='\033[0m'
 
 PS1="$magenta[$green\u $bold_yellow\w$reset$magenta]$reset\n\$ "
-hash cgb && PROMPT_COMMAND+=(cgb)
+hash cgb && PROMPT_COMMAND+=('[[ $PWD = $HOME/* ]] && cgb')
 
 stty -ixon
 bind -x '"\C-l":clear -x'
