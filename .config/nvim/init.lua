@@ -102,7 +102,7 @@ require('Comment').setup({
 })
 
 vim.cmd.colorscheme('habamax')
-vim.api.nvim_set_hl(0, 'Normal', {ctermbg = 233})
+vim.api.nvim_set_hl(0, 'Normal', {})
 vim.api.nvim_set_hl(0, 'MatchParen', {cterm = {bold = true}, ctermfg = 'White'})
 vim.api.nvim_set_hl(0, 'Whitespace', {link = 'ColorColumn'})
 vim.api.nvim_set_hl(0, 'CurSearch', {ctermfg = 'White', ctermbg = 'Brown'})
