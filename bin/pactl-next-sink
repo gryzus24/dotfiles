@@ -5,25 +5,32 @@ import shutil
 import subprocess
 import sys
 
+# Sinks that should not be set as default.
+# Strings from the second column of `pactl list sinks short`.
+IGNORED_SINKS: set[str] = {
+    'alsa_output.pci-... ... ...',
+}
+
+
+def error(code: int, msg: str) -> int:
+    sys.stderr.write(f'error: {msg}\n')
+    return code
+
 
 def main() -> int:
     pactl = shutil.which('pactl')
     if pactl is None:
-        sys.stderr.write('error: no pactl in $PATH\n')
-        return 1
+        return error(1, 'no pactl in $PATH')
 
-    with subprocess.Popen(
-        (pactl, 'list', 'short', 'sinks'),
-        stdout=subprocess.PIPE,
-        encoding='UTF-8'
-    ) as p:
+    cmd = (pactl, 'list', 'short', 'sinks')
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, encoding='UTF-8') as p:
         outs, _ = p.communicate()
-    sinks = [x.split('\t')[1] for x in outs.splitlines()]
 
+    all_sinks = [x.split('\t')[1] for x in outs.splitlines()]
+    sinks = [x for x in all_sinks if x not in IGNORED_SINKS]
     if not sinks:
-        sys.stderr.write('error: no sinks\n')
-        return 1
-    elif len(sinks) == 1:
+        return error(1, 'no sinks')
+    if len(sinks) == 1:
         return 0
 
     with subprocess.Popen(
@@ -32,21 +39,20 @@ def main() -> int:
         encoding='UTF-8'
     ) as p:
         outs, _ = p.communicate()
+
     default_sink = outs.strip()
 
     try:
         next_indx = (sinks.index(default_sink) + 1) % len(sinks)
     except ValueError:
-        sys.stderr.write(f'error: @DEFAULT_SINK@ ({default_sink!r}) not in sinks\n')
-        return 1
+        return error(1, f'@DEFAULT_SINK@ ({default_sink!r}) not in sinks')
 
     cmd = (pactl, 'set-default-sink', sinks[next_indx])
     with subprocess.Popen(cmd) as p:
         rc = p.wait()
 
     if rc:
-        sys.stderr.write(f'error: {" ".join(cmd)} failed with exit code {rc}\n')
-        return rc
+        return error(rc, f'{" ".join(cmd)} failed with exit code {rc}')
 
     return 0
 
