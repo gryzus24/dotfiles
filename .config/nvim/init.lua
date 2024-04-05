@@ -113,6 +113,7 @@ vim.api.nvim_set_hl(0, '@type', {cterm = {italic = true}, ctermfg = 'DarkGreen'}
 --vim.api.nvim_set_hl(0, '@function.call', {cterm = {italic = true}, ctermfg = 108})
 vim.api.nvim_set_hl(0, '@variable.builtin', {ctermfg = 138})
 vim.api.nvim_set_hl(0, '@function.call', {ctermfg = 144})
+vim.api.nvim_set_hl(0, '@function.method.call', {ctermfg = 144})
 vim.api.nvim_set_hl(0, '@method.call', {ctermfg = 144})
 vim.api.nvim_set_hl(0, '@punctuation.bracket', {ctermfg = 247})
 vim.api.nvim_set_hl(0, '@punctuation.delimiter', {ctermfg = 247})
