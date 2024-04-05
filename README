@@ -86,7 +86,8 @@ Scripts in ~/bin
     Fuzzy search ~/.bash_history and copy the selection to clipboard.
   Dependencies
     * dash (shell)
-    * fzf, python, xclip
+    * fzf, python
+    * xclip (on Xorg), wl-copy (on Wayland)
 
 - pacilog
     List all explicitly installed pacman packages.
