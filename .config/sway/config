@@ -1,0 +1,158 @@
+# i3 config file (v4)
+#
+# Please see https://i3wm.org/docs/userguide.html for a complete reference!
+
+xwayland enable
+
+input * {
+  xkb_layout "pl"
+  xkb_options "caps:escape"
+}
+
+input * repeat_delay 180
+input * repeat_rate 60
+input 2:10:TPPS/2_Elan_TrackPoint accel_profile flat
+input 16700:12314:PixArt_Dell_MS116_USB_Optical_Mouse accel_profile flat
+
+output * background #000000 solid_color
+output * subpixel none
+output * adaptive_sync off
+
+#output HDMI-A-1 modeline 138.50  1920 1968 2000 2080  1080 1083 1088 1111 +hsync -vsync
+#output HDMI-A-1 mode 1600x900@60HZ pos 1920 0
+
+seat * hide_cursor when-typing enable
+seat * xcursor_theme default 32
+
+set $mod Mod1
+
+floating_modifier $mod
+
+default_border pixel 2
+floating_minimum_size 4 x 4
+focus_wrapping no
+hide_edge_borders smart_no_gaps
+workspace_layout default
+
+font pango:Terminus 10
+
+set $igap 14
+set $ogap 2
+
+bindsym $mod+Shift+q     kill
+bindsym $mod+w           layout tabbed
+bindsym $mod+e           layout toggle split
+# r
+bindsym $mod+t           exec --no-startup-id $TERMINAL
+bindsym $mod+Return      exec --no-startup-id $TERMINAL
+bindsym $mod+Shift+t     exec thunderbird
+# y
+# u
+bindsym $mod+i           workspace prev_on_output
+bindsym $mod+o           workspace next_on_output
+# p
+bindsym $mod+a           focus parent
+bindsym $mod+s           layout stacking
+bindsym $mod+d           exec --no-startup-id rofi -show drun
+bindsym $mod+f           fullscreen toggle
+# g
+bindsym $mod+h           focus left
+bindsym $mod+Shift+h     move left
+bindsym Control+Shift+h  resize grow width 40 px
+bindsym $mod+j           focus down
+bindsym $mod+Shift+j     move down
+bindsym Control+Shift+j  resize grow height 40 px
+bindsym $mod+k           focus up
+bindsym $mod+Shift+k     move up
+bindsym Control+Shift+k  resize shrink height 40 px
+bindsym $mod+l           focus right
+bindsym $mod+Shift+l     move right
+bindsym Control+Shift+l  resize shrink width 40 px
+bindsym $mod+z           focus child
+# x
+bindsym $mod+c           exec --no-startup-id CM_LAUNCHER=rofi clipmenu
+bindsym $mod+Shift+c     reload
+# v
+bindsym $mod+b           exec --no-startup-id $BROWSER
+bindsym $mod+n           split toggle
+bindsym $mod+m           bar mode toggle
+bindsym $mod+Shift+m     exec --no-startup-id "$HOME/bin/pactl-next-sink"
+
+bindsym $mod+minus       scratchpad show
+bindsym $mod+Shift+minus move scratchpad
+# equal
+bindsym $mod+space       focus mode_toggle
+bindsym $mod+Shift+space floating toggle; \
+                         [floating] border pixel 5; \
+                         [tiling] border pixel 2
+
+bindsym Control+Shift+period gaps inner all plus 2
+
+bindsym Control+Shift+comma gaps inner all minus 2
+
+bindsym Control+Shift+slash gaps outer all toggle $ogap; \
+                            gaps inner all toggle $igap
+
+bindsym Shift+Print exec --no-startup-id "$HOME/bin/scrot-sxiv"
+
+bindsym XF86MonBrightnessUp   exec --no-startup-id xbacklight -inc 1
+bindsym XF86MonBrightnessDown exec --no-startup-id xbacklight -dec 1
+bindsym XF86AudioRaiseVolume  exec --no-startup-id pamixer -i 5
+bindsym XF86AudioLowerVolume  exec --no-startup-id pamixer -d 5
+bindsym XF86AudioMute         exec --no-startup-id pamixer -t
+bindsym XF86TouchpadToggle    exec --no-startup-id "$HOME/bin/touchpad-toggle"
+
+set $ws1 "1"
+set $ws2 "2"
+set $ws3 "3"
+set $ws4 "4"
+set $ws5 "5"
+set $ws6 "6"
+set $ws7 "7"
+
+bindsym $mod+1 workspace number $ws1
+bindsym $mod+2 workspace number $ws2
+bindsym $mod+3 workspace number $ws3
+bindsym $mod+4 workspace number $ws4
+bindsym $mod+5 workspace number $ws5
+bindsym $mod+6 workspace number $ws6
+bindsym $mod+7 workspace number $ws7
+
+bindsym $mod+Shift+1 move container to workspace number $ws1
+bindsym $mod+Shift+2 move container to workspace number $ws2
+bindsym $mod+Shift+3 move container to workspace number $ws3
+bindsym $mod+Shift+4 move container to workspace number $ws4
+bindsym $mod+Shift+5 move container to workspace number $ws5
+bindsym $mod+Shift+6 move container to workspace number $ws6
+bindsym $mod+Shift+7 move container to workspace number $ws7
+
+# class                 border  bg      text    indicator child_border[0,1]
+client.focused          #4c7899 #285577 #ffffff #2e9ef4   #9abced
+client.unfocused        #333333 #222222 #888888 #292d2e   #000000
+
+bar {
+  status_command /usr/bin/i3status --config "$HOME/.config/i3status/$_PLATFORM.config"
+  #tray_output DP-0
+  modifier none
+  tray_padding 0
+  separator_symbol " | "
+  colors {
+    background #000000
+    statusline #d2d2d2
+    separator #666666
+    #                  border[2] bg[2] text
+    focused_workspace  #4c7899 #285577 #ffffff
+    active_workspace   #333333 #5f676a #ffffff
+    inactive_workspace #000000 #000000 #888888
+    urgent_workspace   #2f343a #900000 #ffffff
+    binding_mode       #2f343a #900000 #ffffff
+  }
+}
+
+exec gsettings set org.gnome.desktop.interface cursor-size 32
+exec wl-paste --watch cliphist store
+exec swayidle -w \
+  timeout 180 'swaylock -f -c 000000' \
+  timeout 180 'swaymsg "output * dpms off"' \
+       resume 'swaymsg "output * dpms on"' \
+  before-sleep 'swaylock -f -c 000000'
