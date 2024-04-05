@@ -1,0 +1,14 @@
+#!/bin/dash
+
+set -e
+
+BRIGHTNESS_FILE=/sys/class/backlight/intel_backlight/brightness
+LEVEL="$1"
+STEP=768
+
+if [ -z "$LEVEL" ]; then
+    cat "$BRIGHTNESS_FILE"
+else
+    python3 -Sc "print(int("$LEVEL" * "$STEP"), end='')" \
+        | sudo tee "$BRIGHTNESS_FILE" >/dev/null
+fi
