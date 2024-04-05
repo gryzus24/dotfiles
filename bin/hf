@@ -5,6 +5,12 @@ import sys
 sys.stdout.write(" ".join("".join(sys.stdin).split()))
 '
 
+if [ -n "$WAYLAND_DISPLAY" ]; then
+    CLIP_CMD='wl-copy'
+else
+    CLIP_CMD='xclip -sel clip'
+fi
+
 fzf --exact --no-sort < "$HOME/.bash_history" \
     | python3 -Sc "$PYSTRIP" \
-    | xclip -sel clip
+    | "$CLIP_CMD"
