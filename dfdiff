@@ -14,7 +14,7 @@ with open('$DFIGNORE_PATH') as f:
 
 fnames="$(git ls-files)" || exit 1
 if [ -s "$DFIGNORE_PATH" ]; then
-    ignore_pattern="$(python -Sc "$PY_GET_DFIGNORE")"
+    ignore_pattern="$(python3 -Sc "$PY_GET_DFIGNORE")"
     if [ -n "$ignore_pattern" ]; then
         fnames="$(printf '%s' "$fnames" | grep -Ev "$ignore_pattern")"
     fi
