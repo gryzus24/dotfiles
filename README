@@ -4,8 +4,34 @@ My dotfiles and scripts
 The dotfiles are not particularly exotic.
 What you might find partly useful are the scripts.
 
-Scripts in ~/bin
-================
+Some scripts may be tagged:
+
+  `see source`  these scripts may contain hard-coded values or exhibit
+                undesirable behavior; you should certainly read and understand
+                their source code before executing them.
+
+  `specific`    these scripts may require some specific hardware configuration
+                in order to work correctly or to be by any means useful.
+
+Scripts in ~/bin listed alphabetically
+======================================
+
+- _installgofonts (see source)
+    Install the best fonts to the ~/.local/share/fonts/Go
+    directory and refresh the font cache.
+  Dependencies
+    * dash (shell)
+    * git, fc-cache
+
+- brightness (see source, specific)
+    Set backlight brightness to <n> * STEP or query the current
+    backlight brightness value if <n> is unspecified.
+  Usage
+    $ brightness <n>
+  Dependencies
+    * dash (shell)
+    * python (3.7+)
+
 - buddyinfo-mon
     Interactive /proc/buddyinfo monitoring tool.
     Update every <n> seconds or 1s if unspecified.
@@ -124,16 +150,16 @@ Scripts in ~/bin
   Dependencies
     * python (3.7+)
 
-- scrot-clip
+- scrot-clip (see source)
     Run scrot in "--select" mode and copy the selected image to clipboard.
   Dependencies
     * dash (shell)
     * scrot, xclip
     * xdotool (required when using unclutter)
 
-- scrot-sxiv (see source code)
+- scrot-sxiv (see source)
     Run scrot in "--select --freeze" mode, save the selected image to
-    XDG_PICTURES/Scrots and open it in sxiv.
+    $XDG_PICTURES/Scrots and open it in sxiv.
   Dependencies
     * dash (shell)
     * scrot, sxiv
@@ -142,7 +168,7 @@ Scripts in ~/bin
 - touchpad-toggle (specific)
     Toggle (enable/disable) the Synaptics TouchPad.
 
-- update-mirrorlist (specific, see source code)
+- update-mirrorlist (see source)
     Update the /etc/pacman.d/mirrorlist file.
   Dependencies
     * dash (shell)
