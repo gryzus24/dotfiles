@@ -1,0 +1,20 @@
+#!/bin/dash
+
+set -eu
+
+URL='https://go.googlesource.com/image'
+TARGET="$HOME/.local/share/fonts/Go"
+
+if [ -e "$TARGET/Go-Mono.ttf" ]; then
+    echo 'Go fonts are already installed'
+    exit 0
+fi
+
+git clone --depth 1 "$URL" /tmp/image
+
+mkdir -p "$TARGET"
+cp /tmp/image/font/gofont/ttfs/*.ttf "$TARGET"
+
+fc-cache -vf
+
+printf 'Go fonts installed to %s\n' "$TARGET"
