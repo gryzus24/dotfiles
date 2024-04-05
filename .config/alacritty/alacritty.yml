@@ -22,16 +22,16 @@ scrolling:
 
 font:
   normal:
-    family: Source Code Pro
+    family: Go Mono
     style: Regular
   bold:
-    family: Source Code Pro
+    family: Go Mono
     style: Bold
   italic:
-    family: Source Code Pro
+    family: Go Mono
     style: Italic
   bold_italic:
-    family: Source Code Pro
+    family: Go Mono
     style: Bold Italic
 
   size: 16

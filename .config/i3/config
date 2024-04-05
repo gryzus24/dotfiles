@@ -11,7 +11,7 @@ focus_wrapping no
 hide_edge_borders smart_no_gaps
 workspace_layout tabbed
 
-font pango:DejaVu Sans 7
+font pango:Terminus 10
 #font -misc-fixed-medium-r-normal--13-120-75-75-C-70-iso10646-1
 
 set $igap 14

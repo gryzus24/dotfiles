@@ -41,14 +41,14 @@ TERM = "xterm-256color"
 
 [font]
 builtin_box_drawing = true
-size = 14
+size = 16
 
 [font.bold]
-family = "Mono"
+family = "Go Mono"
 style = "Bold"
 
 [font.bold_italic]
-family = "Mono"
+family = "Go Mono"
 style = "Bold Italic"
 
 [font.glyph_offset]
@@ -56,11 +56,11 @@ x = 0
 y = 0
 
 [font.italic]
-family = "Mono"
+family = "Go Mono"
 style = "Italic"
 
 [font.normal]
-family = "Mono"
+family = "Go Mono"
 style = "Regular"
 
 [font.offset]

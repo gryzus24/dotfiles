@@ -1,6 +1,6 @@
 configuration {
   modes:               "drun,run,window";
-  font:                "Source Code Pro 12";
+  font:                "Go Mono 16";
   sort:                true;
   cycle:               false;
   combi-modes:         "drun,run,window";
