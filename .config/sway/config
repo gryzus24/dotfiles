@@ -131,7 +131,8 @@ client.focused          #4c7899 #285577 #ffffff #2e9ef4   #9abced
 client.unfocused        #333333 #222222 #888888 #292d2e   #000000
 
 bar {
-  status_command /usr/bin/i3status --config "$HOME/.config/i3status/$_PLATFORM.config"
+  #status_command /usr/bin/i3status --config "$HOME/.config/i3status/$_PLATFORM.config"
+  status_command ziew c "$HOME/.config/ziew/$_PLATFORM.config"
   #tray_output DP-0
   modifier none
   tray_padding 0
