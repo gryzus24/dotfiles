@@ -13,4 +13,4 @@ fi
 
 fzf --exact --no-sort < "$HOME/.bash_history" \
     | python3 -Sc "$PYSTRIP" \
-    | "$CLIP_CMD"
+    | $CLIP_CMD
