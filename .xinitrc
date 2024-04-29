@@ -14,6 +14,7 @@ xinput set-prop 'SteelSeries SteelSeries Sensei 310 eSports Mouse' 'libinput Acc
 xinput set-prop 'SteelSeries SteelSeries Sensei 310 eSports Mouse' 'libinput Accel Speed' 0 2>/dev/null
 xinput set-prop 'PixArt Dell MS116 USB Optical Mouse' 'libinput Accel Profile Enabled' 0 1 2>/dev/null
 xinput set-prop 'PixArt Dell MS116 USB Optical Mouse' 'libinput Accel Speed' 0 2>/dev/null
+xinput set-prop 'Logitech USB Optical Mouse' 'libinput Accel Speed' -0.6 2>/dev/null
 
 xrdb -merge "$HOME/.Xresources"
 xset b off
