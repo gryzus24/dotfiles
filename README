@@ -99,11 +99,16 @@ Scripts in ~/bin listed alphabetically
 
 - grepalign
     Align every line of grep output to the first colored match.
+  Options
+    mask  output mask in a form XXX where X is either a '0' or a '1',
+          text before a match _///  mask is equal to 111 if left unspecified.
+          match itself ________//
+          text after a match __/
   Usage
     Generic:
-      $ grep --color=always [...] | grepalign
+      $ grep --color=always [...] | grepalign [mask]
     Or with the helpers from ~/.bash_aliases:
-      $ faketty grep --color=auto [...] | grepalign
+      $ faketty grep --color=auto [...] | grepalign [mask]
       $ agrep [...]
   Dependencies
     * python (3.7+)
