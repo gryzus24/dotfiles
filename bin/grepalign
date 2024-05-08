@@ -4,89 +4,124 @@ from __future__ import annotations
 import os
 import sys
 
+def ANSI(s: str) -> str:
+    return f'\033[{s}m'  #]
+
+RST = ANSI('')
+KESC = '\033[K'  #]
+
 # Color of "matching non-empty text on a selected line".
-DEFAULT_MS = '\033[01;31m'  #]
+DEFAULT_MS_ESC = f'{ANSI("01;31")}{KESC}'
 
 # Color of "separators that are inserted between selected line fields".
-DEFAULT_SE = '\033[36m\033[K:\033[m\033[K'  #]]]]
+DEFAULT_SE_ESC = f'{ANSI("36")}{KESC}:{RST}{KESC}'
+
+F_AFTER_MATCH  = 0x01
+F_MATCH        = 0x02
+F_BEFORE_MATCH = 0x04
 
 
 def main() -> int:
     colors = os.environ.get('GREP_COLORS')
     if colors is None:
-        ms_esc = DEFAULT_MS
-        se_esc = DEFAULT_SE
+        ms_esc = DEFAULT_MS_ESC
+        se_esc = DEFAULT_SE_ESC
     else:
         c = colors.split(':')
-        mses = [
-            f'\033[{x.partition("=")[2]}m\033[K'  #]]
+        ms_escapes = [
+            f'{ANSI(x.partition("=")[2])}{KESC}'
             for x in c if x.startswith(('mt=', 'ms='))
         ]
-        ses = [
-            f'\033[{x.partition("=")[2]}m\033[K:\033[m\033[K'  #]]]]
+        se_escapes = [
+            f'{ANSI(x.partition("=")[2])}{KESC}:{RST}{KESC}'
             for x in c if x.startswith('se=')
         ]
-        ms_esc = mses.pop() if mses else DEFAULT_MS
-        se_esc = ses.pop() if ses else DEFAULT_SE
+        ms_esc = ms_escapes.pop() if ms_escapes else DEFAULT_MS_ESC
+        se_esc = se_escapes.pop() if se_escapes else DEFAULT_SE_ESC
+
+    if len(sys.argv) > 1:
+        for i, c in enumerate(sys.argv[1]):
+            if (c != '0' and c != '1') or i > 2:
+                sys.stderr.write('bad mask (specify XXX where X is either 0 or 1)\n')
+                return 1
+
+        flags = 0
+        for i, c in enumerate(sys.argv[1]):
+            flags |= (ord(c) & 0x0f) << (2 - i)
+    else:
+        flags = F_BEFORE_MATCH | F_MATCH | F_AFTER_MATCH
 
     parts = []
-    fileinfo_align = before_ms_align = 0
+    fileinfo_align_max = text_align_max = 0
     for line in sys.stdin:
-        before_ms, ms_sep, match_and_rest = line.partition(ms_esc)
-        fileinfo, se_sep, before_ms = before_ms.rpartition(se_esc)
+        before,   ms_sep,  match_and_after   = line.partition(ms_esc)
+        fileinfo, se_sep,  text_before_match = before.rpartition(se_esc)
+        match,    rst_sep, after_match       = match_and_after.partition(RST)
+
+        match = ms_sep + match + rst_sep
+
+        if not flags & F_BEFORE_MATCH:
+            text_before_match = ''
+        if not flags & F_MATCH:
+            match = ''
+        if not flags & F_AFTER_MATCH:
+            after_match = '\n'
+
         if se_sep:
             fileinfo += se_sep
-            if len(fileinfo) > fileinfo_align:
-                fileinfo_align = len(fileinfo)
+            if len(fileinfo) > fileinfo_align_max:
+                fileinfo_align_max = len(fileinfo)
 
-        before_ms = before_ms.lstrip()
-        if '\t' in before_ms:
-            before_ms = before_ms.replace('\t', '    ')
+        text_before_match = text_before_match.lstrip()
+        if '\t' in text_before_match:
+            text_before_match = text_before_match.replace('\t', '    ')
 
-        if len(before_ms) > before_ms_align:
-            before_ms_align = len(before_ms)
+        if len(text_before_match) > text_align_max:
+            text_align_max = len(text_before_match)
 
-        parts.append((fileinfo, before_ms, ms_sep + match_and_rest))
+        parts.append((fileinfo, text_before_match, match, after_match))
 
     if not parts:
         return 1
 
     can_squeeze = True
-    max_squeeze = 1 << 31  # some big number
-    for fileinfo, before_ms, _ in parts:
-        fileinfo_space = fileinfo_align - len(fileinfo)
-        before_ms_space = before_ms_align - len(before_ms)
+    squeeze_max = 1 << 31  # some big number
+    for fileinfo, text_before_match, _, _ in parts:
+        fileinfo_gap = fileinfo_align_max - len(fileinfo)
+        text_gap = text_align_max - len(text_before_match)
 
-        line_max_squeeze = fileinfo_space + before_ms_space
-        if not line_max_squeeze:
+        line_squeeze_max = fileinfo_gap + text_gap
+        if not line_squeeze_max:
             can_squeeze = False
             break
 
-        if line_max_squeeze < max_squeeze:
-            max_squeeze = line_max_squeeze
+        if line_squeeze_max < squeeze_max:
+            squeeze_max = line_squeeze_max
 
     o = sys.stdout
     if can_squeeze:
-        for fileinfo, before_ms, match_and_rest in parts:
-            fileinfo_space = fileinfo_align - len(fileinfo)
-            if max_squeeze > fileinfo_space:
-                fileinfo_squeeze = fileinfo_space
-                before_ms_squeeze = max_squeeze - fileinfo_space
+        for fileinfo, text_before_match, match, after_match in parts:
+            fileinfo_gap = fileinfo_align_max - len(fileinfo)
+            if squeeze_max > fileinfo_gap:
+                fileinfo_squeeze = fileinfo_gap
+                text_squeeze = squeeze_max - fileinfo_gap
             else:
-                fileinfo_squeeze = max_squeeze
-                before_ms_squeeze = 0
+                fileinfo_squeeze = squeeze_max
+                text_squeeze = 0
 
             o.write(
-                f'{fileinfo:{fileinfo_align - fileinfo_squeeze}}'
-                f'{before_ms:>{before_ms_align - before_ms_squeeze}}'
-                f'{match_and_rest}'
+                f'{fileinfo:{fileinfo_align_max - fileinfo_squeeze}}'
+                f'{text_before_match:>{text_align_max - text_squeeze}}'
+                f'{match}'
+                f'{after_match}'
             )
     else:
-        for fileinfo, before_ms, match_and_rest in parts:
+        for fileinfo, text_before_match, match, after_match in parts:
             o.write(
-                f'{fileinfo:{fileinfo_align}}'
-                f'{before_ms:>{before_ms_align}}'
-                f'{match_and_rest}'
+                f'{fileinfo:{fileinfo_align_max}}'
+                f'{text_before_match:>{text_align_max}}'
+                f'{match}'
+                f'{after_match}'
             )
 
     return 0
