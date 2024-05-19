@@ -93,7 +93,7 @@ Scripts in ~/bin listed alphabetically
     * python (3.7+)
   Binary version
     Build dependencies
-      * zig (0.11.0)
+      * zig (0.12.0)
     Installation
       $ PROGS=dirg ~/bin/src/install.sh
 
