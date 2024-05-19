@@ -1,11 +1,13 @@
+local vim = vim
 local set = vim.opt
 
 set.fsync = false
 set.mouse = ''
+set.showcmd = false
 
 set.expandtab = true
 set.shiftwidth = 4
-set.tabstop = 4
+set.tabstop = 8
 
 set.colorcolumn = '80'
 set.number = true
