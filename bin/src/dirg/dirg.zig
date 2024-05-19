@@ -6,9 +6,10 @@ const io = std.io;
 const math = std.math;
 const mem = std.mem;
 const os = std.os;
+const posix = std.posix;
 
 fn isFile(path: []const u8) bool {
-    const pathz = os.toPosixPath(path) catch
+    const pathz = posix.toPosixPath(path) catch
         return false;
 
     var statbuf: os.linux.Stat = undefined;
