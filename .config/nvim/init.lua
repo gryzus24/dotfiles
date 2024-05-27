@@ -2,8 +2,10 @@ local vim = vim
 local set = vim.opt
 
 set.fsync = false
+set.lazyredraw = true;
 set.mouse = ''
 set.showcmd = false
+set.termguicolors = false;
 
 set.expandtab = true
 set.shiftwidth = 4
@@ -81,13 +83,16 @@ vim.keymap.set('i', '<cr>',
 )
 vim.keymap.set('v', '<bs>', '"_x')
 vim.keymap.set('v', '<space>s', '"zy:%s/<c-r>z//g<left><left>')
+vim.keymap.set('v', 'H', 'dhPgvhoho')
+vim.keymap.set('v', 'L', 'dpgvlolo')
+vim.keymap.set('s', 'h', '<esc>"_xf<space>pF<space>;gh')
+vim.keymap.set('s', 'l', 'l<space><esc>hr<space>f<space>;"_xF<space>gh')
 
 local Plug = vim.fn['plug#']
 vim.call('plug#begin', '~/.local/share/nvim/plugged')
 Plug('neovim/nvim-lspconfig')
 Plug('nvim-treesitter/nvim-treesitter', {['do'] = ':TSUpdate'})
 Plug('nvim-treesitter/nvim-treesitter-context')
-Plug('numToStr/Comment.nvim')
 vim.call('plug#end')
 
 require 'treesitter-config'
@@ -97,28 +102,33 @@ require('treesitter-context').setup({
     enable = false,
     multiline_threshold = 1
 })
-require('Comment').setup({
-    mappings = {
-        extra = false
-    }
-})
 
 vim.cmd.colorscheme('habamax')
-vim.api.nvim_set_hl(0, 'Normal', {})
-vim.api.nvim_set_hl(0, 'MatchParen', {cterm = {bold = true}, ctermfg = 'White'})
-vim.api.nvim_set_hl(0, 'Whitespace', {link = 'ColorColumn'})
-vim.api.nvim_set_hl(0, 'CurSearch', {ctermfg = 'White', ctermbg = 'Brown'})
-vim.api.nvim_set_hl(0, 'Identifier', {})
-vim.api.nvim_set_hl(0, 'Statement', {ctermfg = 'Yellow'})
-vim.api.nvim_set_hl(0, '@operator', {})
-vim.api.nvim_set_hl(0, '@type', {cterm = {italic = true}, ctermfg = 'DarkGreen'})
---vim.api.nvim_set_hl(0, '@function.call', {cterm = {italic = true}, ctermfg = 108})
-vim.api.nvim_set_hl(0, '@variable.builtin', {ctermfg = 138})
-vim.api.nvim_set_hl(0, '@function.call', {ctermfg = 144})
-vim.api.nvim_set_hl(0, '@function.method.call', {ctermfg = 144})
-vim.api.nvim_set_hl(0, '@method.call', {ctermfg = 144})
-vim.api.nvim_set_hl(0, '@punctuation.bracket', {ctermfg = 247})
-vim.api.nvim_set_hl(0, '@punctuation.delimiter', {ctermfg = 247})
+
+local set_hl = vim.api.nvim_set_hl
+set_hl(0, 'Normal',                {})
+set_hl(0, 'Identifier',            {})
+set_hl(0, 'Operator',              {})
+set_hl(0, 'Statement',             {ctermfg = 'Yellow'})
+set_hl(0, 'Delimiter',             {ctermfg = 247})
+set_hl(0, 'MatchParen',            {cterm = {bold = true}, ctermfg = 'White'})
+set_hl(0, 'CurSearch',             {ctermfg = 'White', ctermbg = 'Brown'})
+
+-- More specific
+set_hl(0, '@function.call',        {ctermfg = 144})
+set_hl(0, '@type',                 {cterm = {italic = true}, ctermfg = 'DarkGreen'})
+set_hl(0, '@variable.builtin',     {ctermfg = 138})
+
+-- Less specific
+set_hl(0, '@type.builtin' ,        {link = '@type'})
+set_hl(0, '@lsp.type.type' ,       {link = '@type'})
+set_hl(0, '@function.method.call', {link = '@function.call'})
+set_hl(0, '@method.call',          {link = '@function.call'})
+
+-- Fixups
+set_hl(0, 'Whitespace',            {link = 'ColorColumn'})
+set_hl(0, '@keyword.type',         {link = 'Keyword'})
+set_hl(0, '@operator',             {link = 'Operator'})
 
 vim.api.nvim_create_autocmd(
     {'BufWinEnter'},
