@@ -37,6 +37,7 @@ fi
 
 case "$_WM" in
     sway)
+        export XDG_CURRENT_DESKTOP=sway
         export WLR_DRM_NO_ATOMIC=1
         export QT_QPA_PLATFORMTHEME=qt5ct
         [[ -z "$TERMINAL" ]] && export TERMINAL=foot
