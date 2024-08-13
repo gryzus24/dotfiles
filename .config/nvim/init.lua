@@ -2,10 +2,10 @@ local vim = vim
 local set = vim.opt
 
 set.fsync = false
-set.lazyredraw = true;
+set.lazyredraw = true
 set.mouse = ''
 set.showcmd = false
-set.termguicolors = false;
+set.termguicolors = false
 
 set.expandtab = true
 set.shiftwidth = 4

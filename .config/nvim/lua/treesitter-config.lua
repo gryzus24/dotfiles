@@ -1,12 +1,10 @@
 require('nvim-treesitter.configs').setup({
-    ensure_installed = {'c', 'python', 'zig'},
-    -- ignore_install = {},
+    ensure_installed = {'c', 'cpp', 'python', 'zig'},
     highlight = {
     	enable = true,
     },
     indent = {
         enable = true,
-        disable = {'python'},
     },
     incremental_selection = {
         enable = true,
