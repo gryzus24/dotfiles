@@ -6,7 +6,7 @@ pub fn build(b: *std.Build) void {
 
     const exe = b.addExecutable(.{
         .name = "dirg",
-        .root_source_file = .{ .path = "./dirg.zig" },
+        .root_source_file = b.path("./dirg.zig"),
         .target = target,
         .optimize = optimize,
         .single_threaded = true,
