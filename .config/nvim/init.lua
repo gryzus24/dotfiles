@@ -66,6 +66,10 @@ vim.keymap.set('n', '<leader>am', ':w | !make')
 vim.keymap.set('n', '<cr>', '<cmd>noh<cr><cr>')
 vim.keymap.set('n', '<esc>', '<cmd>noh<cr>')
 vim.keymap.set('n', 'S', '"_S<left><right>')
+vim.keymap.set('n', '<c-.>', '<c-w>4>')
+vim.keymap.set('n', '<c-,>', '<c-w>4<')
+vim.keymap.set('n', '<c-m>', '<c-w>2+')
+vim.keymap.set('n', '<c-b>', '<c-w>2-')
 vim.keymap.set('i', '<cr>',
     function()
         col = vim.api.nvim_win_get_cursor(0)[2]
@@ -93,10 +97,14 @@ vim.call('plug#begin', '~/.local/share/nvim/plugged')
 Plug('neovim/nvim-lspconfig')
 Plug('nvim-treesitter/nvim-treesitter', {['do'] = ':TSUpdate'})
 Plug('nvim-treesitter/nvim-treesitter-context')
+Plug('nvim-lua/plenary.nvim')
+Plug('nvim-telescope/telescope.nvim', {['tag'] = '0.1.x'})
+Plug('nvim-telescope/telescope-fzf-native.nvim', {['do'] = 'make'})
 vim.call('plug#end')
 
 require 'treesitter-config'
 require 'lsp-config'
+require 'telescope-config'
 
 require('treesitter-context').setup({
     enable = false,
