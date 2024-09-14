@@ -15,7 +15,9 @@ reset='\033[m'
 bgblack='\033[40m'
 
 PS1="$bgblack$magenta[$green\u $bold_yellow\w$reset$bgblack$magenta]$reset\n\$ "
-hash cgb && PROMPT_COMMAND+=('[[ $PWD = $HOME/* ]] && cgb')
+if [ "${#PROMPT_COMMAND[@]}" -eq 1 ]; then
+    hash cgb && PROMPT_COMMAND+=('[[ $PWD = $HOME/* ]] && cgb')
+fi
 
 stty -ixon
 bind -x '"\C-l":clear -x'
