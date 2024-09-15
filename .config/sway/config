@@ -2,42 +2,49 @@
 #
 # Please see https://i3wm.org/docs/userguide.html for a complete reference!
 
-xwayland enable
+include /etc/sway/config.d/*
+
+xwayland disable
+primary_selection disable
+
+set $mod Mod1
+set $border_pixels 2
+set $cursor_size 32
+set $igap 8
+set $ogap 0
 
 input * {
   xkb_layout "pl"
   xkb_options "caps:escape"
+  repeat_delay 180
+  repeat_rate 60
 }
-
-input * repeat_delay 180
-input * repeat_rate 60
 input 2:10:TPPS/2_Elan_TrackPoint accel_profile flat
 input 16700:12314:PixArt_Dell_MS116_USB_Optical_Mouse accel_profile flat
+input 1133:49271:Logitech_USB_Optical_Mouse accel_profile flat
 
-output * background #000000 solid_color
-output * subpixel none
-output * adaptive_sync off
+output * {
+  subpixel rgb
+  max_render_time 4
+  bg #404040 solid_color
+}
 
-#output HDMI-A-1 modeline 138.50  1920 1968 2000 2080  1080 1083 1088 1111 +hsync -vsync
-#output HDMI-A-1 mode 1600x900@60HZ pos 1920 0
+seat * {
+  hide_cursor when-typing enable
+  xcursor_theme default $cursor_size
+}
 
-seat * hide_cursor when-typing enable
-seat * xcursor_theme default 32
-
-set $mod Mod1
-
-floating_modifier $mod
-
-default_border pixel 2
-floating_minimum_size 4 x 4
+default_border pixel $border_pixels
 focus_wrapping no
 hide_edge_borders smart_no_gaps
-workspace_layout default
+
+# class                 border  bg      text    indicator child_border[0,1]
+client.focused          #4c7899 #285577 #ffffff #2e9ef4   #87bc87
+client.unfocused        #333333 #222222 #888888 #292d2e   #000000
 
 font pango:Terminus 10
 
-set $igap 14
-set $ogap 2
+floating_modifier $mod
 
 bindsym $mod+Shift+q     kill
 bindsym $mod+w           layout tabbed
@@ -53,7 +60,7 @@ bindsym $mod+o           workspace next_on_output
 # p
 bindsym $mod+a           focus parent
 bindsym $mod+s           layout stacking
-bindsym $mod+d           exec --no-startup-id rofi -show drun
+bindsym $mod+d           exec --no-startup-id fuzzel
 bindsym $mod+f           fullscreen toggle
 # g
 bindsym $mod+h           focus left
@@ -70,7 +77,10 @@ bindsym $mod+Shift+l     move right
 bindsym Control+Shift+l  resize shrink width 40 px
 bindsym $mod+z           focus child
 # x
-bindsym $mod+c           exec --no-startup-id CM_LAUNCHER=rofi clipmenu
+bindsym $mod+c           exec --no-startup-id cliphist list \
+                              | fuzzel --dmenu -p 'copy> ' \
+                              | cliphist decode \
+                              | wl-copy
 bindsym $mod+Shift+c     reload
 # v
 bindsym $mod+b           exec --no-startup-id $BROWSER
@@ -84,7 +94,7 @@ bindsym $mod+Shift+minus move scratchpad
 bindsym $mod+space       focus mode_toggle
 bindsym $mod+Shift+space floating toggle; \
                          [floating] border pixel 5; \
-                         [tiling] border pixel 2
+                         [tiling] border pixel $border_pixels
 
 bindsym Control+Shift+period gaps inner all plus 2
 
@@ -93,7 +103,7 @@ bindsym Control+Shift+comma gaps inner all minus 2
 bindsym Control+Shift+slash gaps outer all toggle $ogap; \
                             gaps inner all toggle $igap
 
-bindsym Shift+Print exec --no-startup-id "$HOME/bin/scrot-sxiv"
+bindsym Shift+Print exec --no-startup-id grim -g "$(slurp)"
 
 bindsym XF86MonBrightnessUp   exec --no-startup-id xbacklight -inc 1
 bindsym XF86MonBrightnessDown exec --no-startup-id xbacklight -dec 1
@@ -109,6 +119,7 @@ set $ws4 "4"
 set $ws5 "5"
 set $ws6 "6"
 set $ws7 "7"
+set $ws8 "8"
 
 bindsym $mod+1 workspace number $ws1
 bindsym $mod+2 workspace number $ws2
@@ -117,6 +128,7 @@ bindsym $mod+4 workspace number $ws4
 bindsym $mod+5 workspace number $ws5
 bindsym $mod+6 workspace number $ws6
 bindsym $mod+7 workspace number $ws7
+bindsym $mod+8 workspace number $ws8
 
 bindsym $mod+Shift+1 move container to workspace number $ws1
 bindsym $mod+Shift+2 move container to workspace number $ws2
@@ -125,15 +137,10 @@ bindsym $mod+Shift+4 move container to workspace number $ws4
 bindsym $mod+Shift+5 move container to workspace number $ws5
 bindsym $mod+Shift+6 move container to workspace number $ws6
 bindsym $mod+Shift+7 move container to workspace number $ws7
-
-# class                 border  bg      text    indicator child_border[0,1]
-client.focused          #4c7899 #285577 #ffffff #2e9ef4   #9abced
-client.unfocused        #333333 #222222 #888888 #292d2e   #000000
+bindsym $mod+Shift+8 move container to workspace number $ws8
 
 bar {
-  #status_command /usr/bin/i3status --config "$HOME/.config/i3status/$_PLATFORM.config"
   status_command ziew c "$HOME/.config/ziew/$_PLATFORM.config"
-  #tray_output DP-0
   modifier none
   tray_padding 0
   separator_symbol " | "
@@ -150,10 +157,13 @@ bar {
   }
 }
 
-exec gsettings set org.gnome.desktop.interface cursor-size 32
+exec gsettings set org.gnome.desktop.interface cursor-size $cursor_size
+
 exec wl-paste --watch cliphist store
 exec swayidle -w \
-  timeout 180 'swaylock -f -c 000000' \
-  timeout 180 'swaymsg "output * dpms off"' \
-       resume 'swaymsg "output * dpms on"' \
+  timeout 310 'swaylock -f -c 000000' \
+  timeout 300 'swaymsg "output * power off"' \
+       resume 'swaymsg "output * power on"' \
   before-sleep 'swaylock -f -c 000000'
+
+exec_always systemctl --user start sway-session.target
