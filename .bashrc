@@ -63,7 +63,7 @@ alias acti='. venv/bin/activate'
 alias chx='chmod +x'
 alias n='nvim'
 alias nal='$EDITOR $HOME/.config/alacritty/alacritty.toml'
-if command -v devour >/dev/null; then
+if [ -n "$DISPLAY" ] && command -v devour >/dev/null; then
     alias zath='devour zathura'
 else
     alias zath='zathura'
