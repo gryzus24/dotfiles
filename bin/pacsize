@@ -10,16 +10,13 @@ def main() -> int:
         ('/usr/bin/pacman', '-Q', '-i'),
         stdout=subprocess.PIPE,
         env={'LC_ALL': 'C'},
-        encoding='UTF-8'
     ) as p:
-        outs, _ = p.communicate()
-
-    check = ('Name', 'Installed Size')
-    lines = [
-        x[18:]
-        for x in outs.splitlines()
-        if x.startswith(check)
-    ]
+        check = (b'Name', b'Installed Size')
+        lines = [
+            x[18:-1].decode()
+            for x in p.stdout  # type: ignore
+            if x.startswith(check)
+        ]
 
     packages = []
     package_width = total_bytes = 0
