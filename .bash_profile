@@ -38,6 +38,7 @@ fi
 case "$_WM" in
     sway)
         export XDG_CURRENT_DESKTOP=sway
+        #export WLR_RENDERER=vulkan
         #export WLR_DRM_NO_ATOMIC=1
         #export QT_QPA_PLATFORM=wayland
         [[ -z "$TERMINAL" ]] && export TERMINAL=foot
