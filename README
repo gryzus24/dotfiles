@@ -68,6 +68,12 @@ Scripts in ~/bin listed alphabetically
   Installation
     $ PROGS=cgb ~/bin/src/install.sh
 
+- cpu-scaling
+    Print information related to system's CPU frequency scaling and power
+    management policies. Only intel_pstate driver is recognized.
+  Dependencies
+    * python (3.8+)
+
 - deduplicate-bash-history
     Remove duplicates from the ~/.bash_history file.
     Only the most recently used commands are kept.
