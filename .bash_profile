@@ -43,14 +43,14 @@ case "$_WM" in
         #export QT_QPA_PLATFORM=wayland
         [[ -z "$TERMINAL" ]] && export TERMINAL=foot
 
-        if [ "$XDG_VTNR" -eq 1 ]; then
+        if [ "$XDG_VTNR" = 1 ]; then
             [[ -z "$WAYLAND_DISPLAY" ]] && exec sway >/tmp/swaylog 2>&1
         fi
         ;;
     i3)
         [[ -z "$TERMINAL" ]] && export TERMINAL=xterm
 
-        if [ "$XDG_VTNR" -eq 1 ]; then
+        if [ "$XDG_VTNR" = 1 ]; then
             [[ -z "$DISPLAY" ]] && exec startx
         fi
         ;;
