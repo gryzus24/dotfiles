@@ -14,7 +14,7 @@ magenta='\033[35m'
 reset='\033[m'
 bgblack='\033[40m'
 
-PS1="$bgblack$magenta[$green\u $bold_yellow\w$reset$bgblack$magenta]$reset\n\$ "
+PS1="$bgblack$magenta[$green\u$reset$bgblack@$green\h $bold_yellow\w$reset$bgblack$magenta]$reset\n\$ "
 if [ "${#PROMPT_COMMAND[@]}" -eq 1 ]; then
     hash cgb && PROMPT_COMMAND+=('[[ $PWD = $HOME/* ]] && cgb')
 fi
