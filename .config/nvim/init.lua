@@ -70,6 +70,8 @@ vim.keymap.set('n', '<c-.>', '<c-w>4>')
 vim.keymap.set('n', '<c-,>', '<c-w>4<')
 vim.keymap.set('n', '<c-m>', '<c-w>2+')
 vim.keymap.set('n', '<c-b>', '<c-w>2-')
+vim.keymap.set('n', '<tab>', '<cmd>cnext<cr>')
+vim.keymap.set('n', '<S-tab>', '<cmd>cprev<cr>')
 vim.keymap.set('i', '<cr>',
     function()
         col = vim.api.nvim_win_get_cursor(0)[2]
@@ -102,6 +104,10 @@ Plug('nvim-telescope/telescope.nvim', {['tag'] = '0.1.x'})
 Plug('nvim-telescope/telescope-fzf-native.nvim', {['do'] = 'make'})
 vim.call('plug#end')
 
+require('lspconfig').util.default_config.on_init = function(client, _)
+  client.server_capabilities.semanticTokensProvider = nil
+end
+
 require 'treesitter-config'
 require 'lsp-config'
 require 'telescope-config'
@@ -111,32 +117,55 @@ require('treesitter-context').setup({
     multiline_threshold = 1
 })
 
-vim.cmd.colorscheme('habamax')
+function simple_colorscheme()
+    vim.cmd.colorscheme('default')
 
-local set_hl = vim.api.nvim_set_hl
-set_hl(0, 'Normal',                {})
-set_hl(0, 'Identifier',            {})
-set_hl(0, 'Operator',              {})
-set_hl(0, 'Statement',             {ctermfg = 'Yellow'})
-set_hl(0, 'Delimiter',             {ctermfg = 247})
-set_hl(0, 'MatchParen',            {cterm = {bold = true}, ctermfg = 'White'})
-set_hl(0, 'CurSearch',             {ctermfg = 'White', ctermbg = 'Brown'})
+    local set_hl = vim.api.nvim_set_hl
+    set_hl(0, 'Function',      {})
+    set_hl(0, 'Identifier',    {})
+    set_hl(0, 'Special',       {})
+    set_hl(0, '@type',         {cterm = {italic = true}, ctermfg = 'DarkGreen'})
+    set_hl(0, 'Constant',      {cterm = {bold = true}})
+    set_hl(0, 'MatchParen',    {cterm = {bold = true}, ctermfg = 'White'})
+    set_hl(0, 'Comment',       {ctermfg = 'DarkGray'})
+    set_hl(0, 'CurSearch',     {ctermfg = 'White', ctermbg = 'Brown'})
+    set_hl(0, 'Statement',     {ctermfg = 'Yellow'})
+    set_hl(0, 'Whitespace',    {ctermbg = 'DarkGray'})
+    set_hl(0, '@type.builtin', {link = '@type'})
+    set_hl(0, 'ColorColumn',   {link = 'Whitespace'})
+    set_hl(0, 'LineNr',        {link = 'Comment'})
+end
 
--- More specific
-set_hl(0, '@function.call',        {ctermfg = 144})
-set_hl(0, '@type',                 {cterm = {italic = true}, ctermfg = 'DarkGreen'})
-set_hl(0, '@variable.builtin',     {ctermfg = 138})
+function complex_colorscheme()
+    vim.cmd.colorscheme('habamax')
 
--- Less specific
-set_hl(0, '@type.builtin' ,        {link = '@type'})
-set_hl(0, '@lsp.type.type' ,       {link = '@type'})
-set_hl(0, '@function.method.call', {link = '@function.call'})
-set_hl(0, '@method.call',          {link = '@function.call'})
+    local set_hl = vim.api.nvim_set_hl
+    set_hl(0, 'Normal',                {})
+    set_hl(0, 'Identifier',            {})
+    set_hl(0, 'Operator',              {})
+    set_hl(0, 'Statement',             {ctermfg = 'Yellow'})
+    set_hl(0, 'Delimiter',             {ctermfg = 247})
+    set_hl(0, 'MatchParen',            {cterm = {bold = true}, ctermfg = 'White'})
+    set_hl(0, 'CurSearch',             {ctermfg = 'White', ctermbg = 'Brown'})
 
--- Fixups
-set_hl(0, 'Whitespace',            {link = 'ColorColumn'})
-set_hl(0, '@keyword.type',         {link = 'Keyword'})
-set_hl(0, '@operator',             {link = 'Operator'})
+    -- More specific
+    set_hl(0, '@function.call',        {ctermfg = 144})
+    set_hl(0, '@type',                 {cterm = {italic = true}, ctermfg = 'DarkGreen'})
+    set_hl(0, '@variable.builtin',     {ctermfg = 138})
+
+    -- Less specific
+    set_hl(0, '@type.builtin' ,        {link = '@type'})
+    set_hl(0, '@lsp.type.type' ,       {link = '@type'})
+    set_hl(0, '@function.method.call', {link = '@function.call'})
+    set_hl(0, '@method.call',          {link = '@function.call'})
+
+    -- Fixups
+    set_hl(0, 'Whitespace',            {link = 'ColorColumn'})
+    set_hl(0, '@keyword.type',         {link = 'Keyword'})
+    set_hl(0, '@operator',             {link = 'Operator'})
+end
+
+complex_colorscheme()
 
 vim.api.nvim_create_autocmd(
     {'BufWinEnter'},
