@@ -21,6 +21,7 @@ fi
 
 stty -ixon
 bind -x '"\C-l":clear -x'
+bind '"\C-e":shell-expand-line'
 
 shopt -s cdspell     # autocorrects cd misspellings
 shopt -s cmdhist     # save multi-line commands in history as single line
