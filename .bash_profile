@@ -15,6 +15,9 @@ export EDITOR=vim
 export VISUAL=vim
 export PAGER=less
 export LESS=-iR
+# I wonder if they ever reconsider the brain-damaged decision of not supporting
+# .inputrc ... https://github.com/python/cpython/issues/118840
+export PYTHON_BASIC_REPL=1
 type -p librewolf >/dev/null && export BROWSER=librewolf || export BROWSER=firefox
 
 if type -p alacritty >/dev/null; then
