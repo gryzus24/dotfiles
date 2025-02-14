@@ -36,7 +36,7 @@ Scripts in ~/bin listed alphabetically
     Interactive /proc/buddyinfo monitoring tool.
     Update every <n> seconds or 1s if unspecified.
   Usage
-    $ buddyinfo-mon <n>
+    $ buddyinfo-mon [<n>]
     --
     j k    line down/up
     space  page down
@@ -70,7 +70,13 @@ Scripts in ~/bin listed alphabetically
 
 - cpu-scaling
     Print information related to system's CPU frequency scaling and power
-    management policies. Only intel_pstate driver is recognized.
+    management policies. Only intel_pstate driver is recognized. If <n> is
+    specified, query current CPU frequency as reported by the kernel i.e.
+     * aperf/mperf delta from the last non-idle tick or current minimum frequency
+       if no recent enough tick data was available for ~20ms
+    every <n> milliseconds.
+  Usage
+    $ cpu-scaling [<n>]
   Dependencies
     * python (3.8+)
 
@@ -88,13 +94,13 @@ Scripts in ~/bin listed alphabetically
     c  show file count per directory
     h  display help and exit
   Usage
-    $ <cmd> | dirg [a] [c] [h]
+    $ <command> | dirg [a] [c] [h]
     $ locate path | dirg c
     $ find . -type f | dirg ac
   Alternatives
     If a more readable tree output is preferred
     the tree(1) utility should be used.
-    $ <cmd> | tree --fromfile -d
+    $ <command> | tree --fromfile -d
   Dependencies
     * python (3.7+)
   Binary version
@@ -228,6 +234,6 @@ Bash functions in ~/.bash_aliases
     Watch (Buffers, Dirty and Writeback) entries from /proc/meminfo.
     Update every <n> seconds or 0.5s if unspecified.
   Usage
-    $ wmem <n>
+    $ wmem [<n>]
   Dependencies
     * luajit
