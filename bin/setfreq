@@ -1,0 +1,40 @@
+#!/bin/dash
+
+set -eu
+
+prog() { printf %s "$(basename "$0")"; }
+
+if [ "$(id -u)" -ne 0 ]; then
+    printf '%s: must be root\n' "$(prog)"
+    exit 1
+fi
+
+(set -x; : 1 = 'min_freq REQUIRED')
+(set -x; : 2 = 'max_freq REQUIRED')
+(set -x; : 3 = 'beg_cpu  OPTIONAL')
+(set -x; : 4 = 'end_cpu  OPTIONAL')
+min_freq="$1"
+max_freq="$2"
+beg_cpu="${3-}"
+end_cpu="${4-$beg_cpu}"
+
+if [ -z "$beg_cpu" ] && [ -z "$end_cpu" ]; then
+    beg_cpu=0
+    end_cpu=$(($(nproc --all) - 1))
+fi
+
+if [ "$beg_cpu" -gt "$end_cpu" ]; then
+    printf '%s: bad: %d > %d\n' \
+        "$(prog)" "$beg_cpu" "$end_cpu"
+    exit 1
+fi
+
+printf 'Setting %d-%d MHz from CPU=%d to CPU=%d\n' \
+    "$min_freq" "$max_freq" "$beg_cpu" "$end_cpu"
+
+for i in $(seq "$beg_cpu" "$end_cpu"); do
+    min_freq_path="/sys/devices/system/cpu/cpu$i/cpufreq/scaling_min_freq"
+    max_freq_path="/sys/devices/system/cpu/cpu$i/cpufreq/scaling_max_freq"
+    echo $((min_freq * 1000)) >"$min_freq_path"
+    echo $((max_freq * 1000)) >"$max_freq_path"
+done
