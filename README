@@ -176,6 +176,21 @@ Scripts in ~/bin listed alphabetically
     * scrot, sxiv
     * xdotool (required when using unclutter)
 
+- setfreq
+    Set CPU frequency scaling range.
+  Options
+    $1  minimum frequency in MHz
+    $2  maximum frequency in MHz
+    $3  optional CPU range start
+         * affects all CPUs if omitted
+         * affects only specified CPU if range end is not specified
+    $4  optional CPU range end
+  Usage
+    $ setfreq 2400 3600
+    $ setfreq 800 3600 1 3
+  Dependencies
+    * dash (shell)
+
 - touchpad-toggle (specific)
     Toggle (enable/disable) the Synaptics TouchPad.
 
