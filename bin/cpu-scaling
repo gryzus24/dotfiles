@@ -2,9 +2,31 @@
 
 import os
 import sys
+import time
+
+SEP = '  '
+CPUDIR_PATH = '/sys/devices/system/cpu'
 
 def green(s: str) -> str:
     return '\033[32m' + s + '\033[m'  #]]
+
+def read_fd(fd: int) -> str:
+    return os.pread(fd, 4096, 0).strip().decode()
+
+def read_file(path: str) -> str:
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except FileNotFoundError:
+        return 'N/A'
+    try:
+        return read_fd(fd)
+    finally:
+        os.close(fd)
+
+def align_fields(fields: list[str], align: list[int], sep: str) -> str:
+    return sep.join([f'{x:{a}}' for x, a in zip(fields, align)])
+
+# =============================================================================
 
 class BoundedFeatures:
     __slots__ = ('governors_avail', 'governors_seen_active',
@@ -34,51 +56,41 @@ class BoundedFeatures:
     def acpi_profiles_used(self) -> str:
         return self._used(self.acpi_profiles_avail, self.acpi_profiles_seen_active)
 
-def read_file(path: str) -> str:
-    try:
-        fd = os.open(path, os.O_RDONLY)
-    except FileNotFoundError:
-        return 'N/A'
-    try:
-        return os.read(fd, 4096).strip().decode()
-    finally:
-        os.close(fd)
+def read_nr_cpus() -> int:
+    return int(read_file(CPUDIR_PATH + '/present').rpartition('-')[2]) + 1
 
-def align_fields(fields: list[str], align: list[int], sep: str) -> str:
-    return sep.join([f'{x:{a}}' for x, a in zip(fields, align)])
+def write_intel_pstate_header(sep: str) -> None:
+    pstate_path = CPUDIR_PATH + '/intel_pstate'
 
-def main() -> int:
-    SEP = '  '
-    CPUDIR_PATH = '/sys/devices/system/cpu'
-    INTEL_PSTATE_PATH = CPUDIR_PATH + '/intel_pstate'
+    if not os.path.exists(pstate_path):
+        return
 
-    _, _, cpu_max_str = read_file(CPUDIR_PATH + '/present').rpartition('-')
-    nr_cpus = int(cpu_max_str) + 1
+    hwp_dynboost = read_file(pstate_path + '/hwp_dynamic_boost')
+    max_pct      = read_file(pstate_path + '/max_perf_pct')
+    min_pct      = read_file(pstate_path + '/min_perf_pct')
+    no_turbo     = int(read_file(pstate_path + '/no_turbo'))
+    turbo        = str(int(not no_turbo))
+    status       = read_file(pstate_path + '/status')
+    perf_range   = f'{min_pct} - {max_pct}'
+
+    intel_header = ['HWP DYN. BOOST', 'MIN/MAX PERF %', 'TURBO', 'STATUS']
+    intel_align = [len(x) for x in intel_header]
+    intel = [hwp_dynboost, perf_range, turbo, status]
+    for i, x in enumerate(intel):
+        intel_align[i] = max(intel_align[i], len(x))
+
+    header = align_fields(intel_header, intel_align, sep) + '\n'
+    body = align_fields(intel, intel_align, sep) + '\n'
+    width = max(len(header), len(body)) - 1
 
     o = sys.stdout
-    if os.path.exists(INTEL_PSTATE_PATH):
-        hwp_dynboost = read_file(INTEL_PSTATE_PATH + '/hwp_dynamic_boost')
-        max_pct      = read_file(INTEL_PSTATE_PATH + '/max_perf_pct')
-        min_pct      = read_file(INTEL_PSTATE_PATH + '/min_perf_pct')
-        no_turbo     = int(read_file(INTEL_PSTATE_PATH + '/no_turbo'))
-        turbo        = str(int(not no_turbo))
-        status       = read_file(INTEL_PSTATE_PATH + '/status')
-        perf_range   = f'{min_pct} - {max_pct}'
+    o.write(' INTEL PSTATE DRIVER '.center(width, '=') + '\n')
+    o.write(header)
+    o.write(body)
+    o.write('=' * width + '\n')
 
-        intel_header = ['HWP DYN. BOOST', 'MIN/MAX PERF %', 'TURBO', 'STATUS']
-        intel_align = [len(x) for x in intel_header]
-        intel = [hwp_dynboost, perf_range, turbo, status]
-        for i, x in enumerate(intel):
-            intel_align[i] = max(intel_align[i], len(x))
-
-        header = align_fields(intel_header, intel_align, SEP) + '\n'
-        body = align_fields(intel, intel_align, SEP) + '\n'
-        width = max(len(header), len(body)) - 1
-
-        o.write(' INTEL PSTATE DRIVER '.center(width, '=') + '\n')
-        o.write(header)
-        o.write(body)
-        o.write('=' * width + '\n')
+def write_header(nr_cpus: int) -> None:
+    write_intel_pstate_header(SEP)
 
     features = BoundedFeatures()
     rows: list[list[str]] = []
@@ -88,8 +100,10 @@ def main() -> int:
         this_cpufreq = f'{CPUDIR_PATH}/cpu{i}/cpufreq/'
         this_power = f'{CPUDIR_PATH}/cpu{i}/power/'
         if not i:
-            features.governors_avail = read_file(this_cpufreq + 'scaling_available_governors').split()
-            features.epps_avail      = read_file(this_cpufreq + 'energy_performance_available_preferences').split()
+            features.governors_avail = \
+                read_file(this_cpufreq + 'scaling_available_governors').split()
+            features.epps_avail = \
+                read_file(this_cpufreq + 'energy_performance_available_preferences').split()
         governor      = read_file(this_cpufreq + 'scaling_governor')
         scaling_min   = int(read_file(this_cpufreq + 'scaling_min_freq')) // 1000
         scaling_max   = int(read_file(this_cpufreq + 'scaling_max_freq')) // 1000
@@ -97,7 +111,7 @@ def main() -> int:
         cpuinfo_max   = int(read_file(this_cpufreq + 'cpuinfo_max_freq')) // 1000
         epp           = read_file(this_cpufreq + 'energy_performance_preference')
         epb           = read_file(this_power + 'energy_perf_bias')
-        cpu           = f'CPU{i:<2}'
+        cpu           = str(i)
         cpu_range     = f'{cpuinfo_min:>4} - {cpuinfo_max:<4}'
         scaling_range = f'{scaling_min:>4} - {scaling_max:<4}'
 
@@ -109,9 +123,13 @@ def main() -> int:
         features.governors_seen_active.add(governor)
         features.epps_seen_active.add(epp)
 
-    features.acpi_profiles_avail = read_file('/sys/firmware/acpi/platform_profile_choices').split()
-    features.acpi_profiles_seen_active.add(read_file('/sys/firmware/acpi/platform_profile'))
+    features.acpi_profiles_avail = \
+        read_file('/sys/firmware/acpi/platform_profile_choices').split()
+    features.acpi_profiles_seen_active.add(
+        read_file('/sys/firmware/acpi/platform_profile')
+    )
 
+    o = sys.stdout
     o.write(align_fields(rows_header, rows_align, SEP) + '\n')
     for r in rows:
         o.write(align_fields(r, rows_align, SEP) + '\n')
@@ -120,6 +138,56 @@ def main() -> int:
     o.write(f'GOVERNORS     = {features.governors_used()}\n')
     o.write(f'EPPS          = {features.epps_used()}\n')
     o.write(f'ACPI PROFILES = {features.acpi_profiles_used()}\n')
+
+def monitor_cpu_freq(nr_cpus: int, interval_ms: int, tsc_mhz: int) -> None:
+    cpu_fds = []
+
+    o = sys.stdout
+    for i in range(nr_cpus):
+        path = f'{CPUDIR_PATH}/cpu{i}/cpufreq/scaling_cur_freq'
+        cpu_fds.append(os.open(path, os.O_RDONLY))
+        o.write(f'CPU{i:<5}')
+    o.write('\n')
+
+    interval_sec = interval_ms / 1000
+    freq_min = 1000 * 1000
+    freq_max = 0
+
+    while True:
+        s = ''
+        for f in [read_fd(fd) for fd in cpu_fds]:
+            mhz = int(f) // 1000
+            if mhz > freq_max:
+                freq_max = mhz
+            elif mhz < freq_min:
+                freq_min = mhz
+            elif mhz == tsc_mhz:
+                s += '.       '
+                continue
+            s += f'{mhz:<8}'
+
+        o.write(f'{s}>{freq_min:<4} <{freq_max:<4}\n')
+        time.sleep(interval_sec)
+
+def usage() -> int:
+    o = sys.stdout
+    o.write(f'usage: {os.path.basename(sys.argv[0])} [<interval_ms>]\n')
+    return 2
+
+def main() -> int:
+    interval_ms = 0
+    if len(sys.argv) > 1:
+        for arg in sys.argv[1:]:
+            if arg == '-h' or arg == '--help':
+                return usage()
+            elif arg.isdecimal():
+                if not interval_ms:
+                    interval_ms = int(arg)
+
+    nr_cpus = read_nr_cpus()
+    write_header(nr_cpus)
+    if interval_ms:
+        monitor_cpu_freq(nr_cpus, interval_ms, 800)
 
     return 0
 
