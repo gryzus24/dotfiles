@@ -1,0 +1,9 @@
+#!/bin/dash
+
+set -eu
+
+grn='\033[35m'
+rst='\033[m'
+
+cmd="printf '${grn}%-16s${rst}\n' '{}:' && cat '{}'"
+find . "$@" -type f -exec dash -c "$cmd" \;
