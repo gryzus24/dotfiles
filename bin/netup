@@ -1,0 +1,14 @@
+#!/bin/dash
+
+set -eu
+. libsh
+
+sh_ensure_root
+
+DEV=enp5s0
+IP=192.168.1.2/24
+GW=192.168.1.1
+
+ip link set "$DEV" up
+ip addr add "$IP" dev "$DEV"
+ip route add default via "$GW" dev "$DEV"

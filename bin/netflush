@@ -1,0 +1,12 @@
+#!/bin/dash
+
+set -eu
+. libsh
+
+sh_ensure_root
+
+DEV=enp5s0
+
+ip addr flush dev "$DEV"
+ip route flush dev "$DEV"
+ip link set "$DEV" down
