@@ -40,24 +40,14 @@ fi
 
 case "$_WM" in
     sway)
-        export XDG_CURRENT_DESKTOP=sway
-        #export WLR_RENDERER=vulkan
-        #export WLR_DRM_NO_ATOMIC=1
-        #export QT_QPA_PLATFORM=wayland
         [[ -z "$TERMINAL" ]] && export TERMINAL=foot
-
-        if [ "$XDG_VTNR" = 1 ]; then
-            [[ -z "$WAYLAND_DISPLAY" ]] && exec sway >/tmp/swaylog 2>&1
-        fi
+        [[ "$XDG_VTNR" == 1 && -z "$WAYLAND_DISPLAY" ]] && exec run-sway
         ;;
     i3)
         [[ -z "$TERMINAL" ]] && export TERMINAL=xterm
-
-        if [ "$XDG_VTNR" = 1 ]; then
-            [[ -z "$DISPLAY" ]] && exec startx
-        fi
+        [[ "$XDG_VTNR" == 1 && -z "$DISPLAY" ]] && exec startx
         ;;
     *)
-        printf 'ERROR: _WM = %s\n' "$_WM"
+        printf 'ERROR: _WM=%s\n' "$_WM"
         ;;
 esac
