@@ -1,0 +1,4 @@
+#!/bin/dash
+
+SEP="$1"
+column --table -s "$SEP" -o "$SEP"
