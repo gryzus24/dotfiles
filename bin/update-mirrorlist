@@ -1,10 +1,11 @@
 #!/bin/dash
 
 set -e
+. libsh
 
 usage() {
     echo \
-        "usage: $(basename "$0") [--age | --rate]\n" \
+        "usage: $(sh_prog) [--age | --rate]\n" \
         '  --age    sort by age (default)\n' \
         '  --rate   sort by rate'
 }
@@ -22,16 +23,13 @@ case "$1" in
         sort_arg=rate
         ;;
     *)
-        printf 'unrecognized option: %s\n' "$1"
+        printf '%s: unrecognized option: %s\n' "$(sh_prog)" "$1"
         usage
         exit 1
         ;;
 esac
 
-if [ "$(id -u)" -ne 0 ]; then
-    printf '%s: must be root\n' "$(basename "$0")"
-    exit 1
-fi
+sh_ensure_root
 
 mlist=/etc/pacman.d/mirrorlist
 

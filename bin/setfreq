@@ -1,13 +1,9 @@
 #!/bin/dash
 
 set -eu
+. libsh
 
-prog() { printf %s "$(basename "$0")"; }
-
-if [ "$(id -u)" -ne 0 ]; then
-    printf '%s: must be root\n' "$(prog)"
-    exit 1
-fi
+sh_ensure_root
 
 (set -x; : 1 = 'min_freq REQUIRED')
 (set -x; : 2 = 'max_freq REQUIRED')
@@ -25,7 +21,7 @@ fi
 
 if [ "$beg_cpu" -gt "$end_cpu" ]; then
     printf '%s: bad: %d > %d\n' \
-        "$(prog)" "$beg_cpu" "$end_cpu"
+        "$(sh_prog)" "$beg_cpu" "$end_cpu"
     exit 1
 fi
 
