@@ -1,0 +1,13 @@
+#!/bin/dash
+
+#export QT_QPA_PLATFORM=wayland
+#export QT_QPA_PLATFORMTHEME=qt6ct
+#export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.json
+#export VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation
+#export WLR_DRM_NO_ATOMIC=1
+#export WLR_NO_HARDWARE_CURSORS=1
+#export WLR_RENDERER=vulkan
+#export WLR_RENDER_NO_EXPLICIT_SYNC=1
+export XDG_CURRENT_DESKTOP=sway
+
+exec sway >/tmp/swaylog 2>&1
