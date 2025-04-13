@@ -19,7 +19,7 @@ set.ignorecase = true
 set.smartcase = true
 set.wildignorecase = true
 
-set.completeopt = 'menu,noselect'
+set.completeopt = 'menu'
 
 set.path = '**'
 set.grepprg = 'git grep -n'
