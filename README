@@ -13,6 +13,9 @@ Some scripts may be tagged:
   `specific`    these scripts may require some specific hardware configuration
                 in order to work correctly or to be by any means useful.
 
+  `wayland`     these scripts work only in the presence of the Wayland
+                compositor.
+
 Scripts in ~/bin listed alphabetically
 ======================================
 
@@ -50,7 +53,7 @@ Scripts in ~/bin listed alphabetically
     or nothing if not inside a git repository. It is meant to be used
     inside of PROMPT_COMMAND or PS1. Compared to other solutions it is
     FAST - ~650 bytes of machine code that glues together a few system
-    calls packed into an <4K executable for any x86-64 Linux - your shell
+    calls packed into a <4K executable for any x86-64 Linux - your shell
     prompt will never feel sluggish again.
   Usage
     In ~/.bashrc PROMPT_COMMAND:
@@ -68,12 +71,19 @@ Scripts in ~/bin listed alphabetically
   Installation
     $ PROGS=cgb ~/bin/src/install.sh
 
+- colorpicker (wayland)
+    Pick the top-left pixel color of the selection, copy it to clipboard and
+    print on stdout.
+  Dependencies
+    * dash (shell)
+    * grim, slurp, magick, wl-copy
+
 - cpu-scaling
     Print information related to system's CPU frequency scaling and power
     management policies. Only intel_pstate driver is recognized. If <n> is
     specified, query current CPU frequency as reported by the kernel i.e.
-     * aperf/mperf delta from the last non-idle tick or current minimum frequency
-       if no recent enough tick data was available for ~20ms
+     * aperf/mperf delta from the last non-idle tick or current minimum
+       frequency if no recent enough tick data was available for ~20ms
     every <n> milliseconds.
   Usage
     $ cpu-scaling [<n>]
@@ -132,6 +142,17 @@ Scripts in ~/bin listed alphabetically
     * fzf, python
     * xclip (on Xorg), wl-copy (on Wayland)
 
+- lscat
+    Recursively iterate over all files in the current working directory, print
+    their file path and use the cat command on them.
+  Dependencies
+    * dash (shell)
+
+- net{up,flush}
+    Configure a static IP address on the network interface.
+  Dependencies
+    * dash (shell)
+
 - pacilog
     List all explicitly installed pacman packages.
     Shows
@@ -182,6 +203,16 @@ Scripts in ~/bin listed alphabetically
     * scrot, sxiv
     * xdotool (required when using unclutter)
 
+- sep
+    Create a table with columns separated by <sep>.
+  Usage
+    Generic:
+      $ cat <file> | sep <sep>
+    Or in Vim command-line mode afer visually selecting a few lines:
+      :!sep <sep>
+  Dependencies
+    * dash (shell)
+
 - setfreq
     Set CPU frequency scaling range.
   Options
@@ -216,6 +247,14 @@ Scripts in ~/bin listed alphabetically
       :!wsort
   Dependencies
     * python (3.7+)
+
+- zram (see source)
+    Set up swap on zram (8G block device with zstd compression) and change
+    the vm.swappiness value to 180 (prioritize scanning anonymous folios for
+    swap-out as oppossed to file-backed folios)
+  Dependencies
+    * dash (shell)
+    * kernel compiled with CONFIG_ZRAM=m
 
 Bash functions in ~/.bash_aliases
 =================================
