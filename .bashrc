@@ -49,7 +49,7 @@ alias grep='grep --color=auto'
 alias ip='ip -color=auto'
 
 # utils
-alias ls='ls --color=auto -N'
+alias ls='ls --color=auto --time-style=long-iso -N'
 alias l='ls -lh'
 alias la='ls -A'
 alias mv='mv -n'
