@@ -40,7 +40,7 @@ yellow  = "0xecbe7b"
 #background = "0xffffd0"
 #foreground = "0x2f2f00"
 
-background = "0x101312"
+background = "0x0b1009"
 foreground = "0xd9dbba"
 
 # [env]
@@ -72,7 +72,7 @@ style = "Regular"
 
 [font.offset]
 x = -1
-y = -1
+y = 0
 
 [[keyboard.bindings]]
 action = "Paste"
@@ -206,6 +206,7 @@ history = 16384
 multiplier = 4
 
 [window]
+dynamic_padding = true
 dynamic_title = true
 opacity = 1.0
 resize_increments = true
