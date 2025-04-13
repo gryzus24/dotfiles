@@ -1,0 +1,23 @@
+#!/bin/dash
+
+set -eu
+. libsh
+
+sh_ensure_root
+
+if [ -e /dev/zram0 ]; then
+    printf '%s: /dev/zram0 already exists' "$(sh_prog)"
+    exit 1
+fi
+
+SIZE=8G
+ALGO=zstd
+
+modprobe zram
+# Hack to hopefully avoid the udev hotplug race.
+sleep 0.2
+
+DEV="$(zramctl -f -s "$SIZE" -a "$ALGO")"
+mkswap "$DEV"
+swapon "$DEV"
+sysctl vm.swappiness=180
