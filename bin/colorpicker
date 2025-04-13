@@ -1,0 +1,6 @@
+#!/bin/dash
+
+set -eu
+
+{ grim -l 0 -g "$(slurp)" -t ppm - | identify -format '#%[hex:p{0,0}]' - | tee /dev/stderr | wl-copy; } 2>&1
+echo
