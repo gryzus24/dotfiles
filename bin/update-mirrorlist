@@ -10,17 +10,17 @@ usage() {
         '  --rate   sort by rate'
 }
 
-sort_arg=age
+SORT_ARG=age
 case "$1" in
     -h|--help)
         usage
         exit 0
         ;;
     --age | '')
-        sort_arg=age
+        SORT_ARG=age
         ;;
     --rate)
-        sort_arg=rate
+        SORT_ARG=rate
         ;;
     *)
         printf '%s: unrecognized option: %s\n' "$(sh_prog)" "$1"
@@ -31,18 +31,18 @@ esac
 
 sh_ensure_root
 
-mlist=/etc/pacman.d/mirrorlist
+OUT=/etc/pacman.d/mirrorlist
 
 reflector \
     --country PL,DE,CZ,SK,GB,FR \
     --latest 6 \
-    --sort "${sort_arg}" \
+    --sort "${SORT_ARG}" \
     --protocol https \
-    --save "${mlist}.tmp"
+    --save "${OUT}.tmp"
 
-[ -f "${mlist}" ] && mv "${mlist}" "${mlist}.bak"
-mv "${mlist}.tmp" "${mlist}"
+[ -f "${OUT}" ] && mv "${OUT}" "${OUT}.bak"
+mv "${OUT}.tmp" "${OUT}"
 
-rm -f "${mlist}.pacnew"
+rm -f "${OUT}.pacnew"
 
-diff --color=auto -u "${mlist}.bak" "${mlist}"
+diff --color=auto -u "${OUT}.bak" "${OUT}"

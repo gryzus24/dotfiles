@@ -2,8 +2,8 @@
 
 set -eu
 
-grn='\033[35m'
-rst='\033[m'
+GRN='\033[35m'
+RST='\033[m'
 
-cmd="printf '${grn}%-16s${rst}\n' '{}:' && cat '{}'"
-find . "$@" -type f -exec dash -c "$cmd" \;
+CMD="printf '${GRN}%-16s${RST}\n' '{}:' && cat '{}'"
+find . "$@" -type f -exec dash -c "$CMD" \;
