@@ -72,8 +72,8 @@ Scripts in ~/bin listed alphabetically
     $ PROGS=cgb ~/bin/src/install.sh
 
 - colorpicker (wayland)
-    Pick the top-left pixel color of the selection, copy it to clipboard and
-    print on stdout.
+    Pick the top-left pixel color of the selection, copy it to clipboard
+    and print on stdout.
   Dependencies
     * dash (shell)
     * grim, slurp, magick, wl-copy
@@ -196,8 +196,8 @@ Scripts in ~/bin listed alphabetically
     * xdotool (required when using unclutter)
 
 - scrot-sxiv (see source)
-    Run scrot in "--select --freeze" mode, save the selected image to
-    $XDG_PICTURES/Scrots and open it in sxiv.
+    Run scrot in "--select --freeze" mode, save the selected image
+    to $XDG_PICTURES/Scrots and open it in sxiv.
   Dependencies
     * dash (shell)
     * scrot, sxiv
@@ -208,7 +208,7 @@ Scripts in ~/bin listed alphabetically
   Usage
     Generic:
       $ cat <file> | sep <sep>
-    Or in Vim command-line mode afer visually selecting a few lines:
+    Or in Vim command-line mode after visually selecting a few lines:
       :!sep <sep>
   Dependencies
     * dash (shell)
@@ -243,15 +243,15 @@ Scripts in ~/bin listed alphabetically
   Usage
     Generic:
       $ echo 'Ala    ma wielkiego    kota' | wsort
-    Or in Vim command-line mode afer visually selecting a line:
+    Or in Vim command-line mode after visually selecting a line:
       :!wsort
   Dependencies
     * python (3.7+)
 
 - zram (see source)
     Set up swap on zram (8G block device with zstd compression) and change
-    the vm.swappiness value to 180 (prioritize scanning anonymous folios for
-    swap-out as oppossed to file-backed folios)
+    the vm.swappiness value to 180 (prioritize scanning anonymous folios
+    for swap-out as opposed to file-backed folios)
   Dependencies
     * dash (shell)
     * kernel compiled with CONFIG_ZRAM=m
