@@ -191,11 +191,12 @@ function ccolors()
     set_hl(0, '@label',                {})
 
     set_hl(0, 'Function',              {fg = '#5cb9ff', bold = true})
-    set_hl(0, '@function.call',        {bold = true})
+    set_hl(0, '@function.call',        {fg = '#b5c3e2', bold = true})
     set_hl(0, '@function.method.call', {link = '@function.call'})
     set_hl(0, '@function.builtin',     {link = '@function.call'})
 
     set_hl(0, '@number',               {fg = '#5cb9ff'})
+    set_hl(0, '@number.float',         {link = '@number'})
     set_hl(0, '@boolean',              {link = '@number'})
 
     set_hl(0, 'String',                {fg = '#ecbe7b'})
