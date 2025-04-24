@@ -13,11 +13,6 @@ set $cursor_size 16
 set $igap 7
 set $ogap 8
 
-# set $sgc #101412
-# set $mgc #202824
-# set $lgc #405048
-# set $qgc #80a090
-
 set $sgc #0b1009
 set $mgc #172112
 set $lgc #304525
