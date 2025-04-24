@@ -9,9 +9,17 @@ conf['ts_ls'].setup({})
 conf['zls'].setup({})
 
 vim.keymap.set('n', '<space>e', vim.diagnostic.open_float)
-vim.keymap.set('n', '[d',       vim.diagnostic.goto_prev)
-vim.keymap.set('n', ']d',       vim.diagnostic.goto_next)
-vim.keymap.set('n', '<space>q', vim.diagnostic.setloclist)
+vim.keymap.set('n', '[d', function()
+    vim.diagnostic.jump(
+        {count = -1, severity = {min = vim.diagnostic.severity.INFO}, float = true}
+    )
+end)
+vim.keymap.set('n', ']d', function()
+    vim.diagnostic.jump(
+        {count = 1, severity = {min = vim.diagnostic.severity.INFO}, float = true}
+    )
+end)
+vim.keymap.set('n', '<space>q', vim.diagnostic.setqflist)
 
 vim.api.nvim_create_autocmd('LspAttach', {
   group = vim.api.nvim_create_augroup('UserLspConfig', {}),
