@@ -8,16 +8,29 @@ xwayland disable
 primary_selection disable
 
 set $mod Mod1
-set $border_pixels 3
+set $border_pixels 1
 set $cursor_size 16
-set $igap 7
-set $ogap 8
+set $igap 9
+set $ogap 0
 
-set $sgc #0b1009
-set $mgc #172112
-set $lgc #304525
-set $qgc #64904d
-set $txt #d9dbba
+gaps inner $igap
+gaps outer $ogap
+
+## Green
+# set $sgc #080d06
+# set $mgc #172112
+# set $lgc #304525
+# set $qgc #64904d
+# set $dxt #d9dbda
+# set $txt #ffffff
+
+## Mono
+set $sgc #000000
+set $mgc #181818
+set $lgc #404040
+set $qgc #666666
+set $dxt #9e9e9e
+set $txt #ffffff
 
 input * {
   xkb_layout "pl"
@@ -36,7 +49,7 @@ input 1386:768:Wacom_Bamboo_One_S_Pen {
 }
 
 output * {
-  bg #404040 solid_color
+  bg $mgc solid_color
   adaptive_sync yes
   allow_tearing yes
 }
@@ -114,8 +127,8 @@ bindsym Control+Shift+period gaps inner all plus 2
 bindsym $mod+comma          focus output left
 bindsym Control+Shift+comma gaps inner all minus 2
 
-bindsym Control+Shift+slash gaps outer all toggle $ogap; \
-                            gaps inner all toggle $igap
+bindsym Control+Shift+slash gaps inner all toggle $igap; \
+                            gaps outer all toggle $ogap
 
 bindsym Shift+Print exec --no-startup-id grim -g "$(slurp)"
 
@@ -168,8 +181,8 @@ bindsym $mod+Control+Shift+8 rename workspace to $ws8
 font pango:Terminus 10
 
 # class                 border  bg      text   indicator child_border
-client.focused          $lgc    $lgc    $txt    $txt     $qgc
-client.focused_inactive $mgc    $mgc    $qgc    $mgc     $mgc
+client.focused          $dxt    $lgc    $txt    $txt     $dxt
+client.focused_inactive $lgc    $mgc    $dxt    $lgc     $lgc
 client.unfocused        $sgc    $sgc    $qgc    $sgc     $sgc
 client.urgent           #2f343a #900000 $txt    #900000  #900000
 client.placeholder      #000000 #0c0c0c #ffffff #000000  #0c0c0c
@@ -179,15 +192,15 @@ bar {
   status_command ziew c "$HOME/.config/ziew/$_PLATFORM.config"
   modifier none
   tray_padding 0
-  separator_symbol " | "
+  separator_symbol "  "
   colors {
-    background #000000
-    statusline #d2d2d2
-    separator #666666
+    background $sgc
+    statusline $txt
+    separator $lgc
     #                  border  bg      text
-    focused_workspace  $qgc    $lgc    $txt
-    active_workspace   $lgc    $mgc    $qgc
-    inactive_workspace #000000 #000000 $qgc
+    focused_workspace  $sgc    $lgc    $txt
+    active_workspace   $lgc    $mgc    $dxt
+    inactive_workspace $sgc    $sgc    $qgc
     urgent_workspace   #2f343a #900000 $txt
     binding_mode       #2f343a #900000 $txt
   }
