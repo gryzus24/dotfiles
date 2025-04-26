@@ -8,13 +8,19 @@
 HISTCONTROL=ignoredups:erasedups
 HISTSIZE=100000
 
-bold_yellow='\033[33;1m'
-green='\033[32m'
-magenta='\033[35m'
-reset='\033[m'
-bgblack='\033[40m'
+YEL='\033[33;1m'
+GRE='\033[32m'
+MAG='\033[35m'
+RST='\033[m'
+BGB='\033[40m'
+V=$'\x01'
+E=$'\x02'
 
-PS1="$bgblack$magenta[$green\u$reset$bgblack@$green\h $bold_yellow\w$reset$bgblack$magenta]$reset\n\$ "
+simple_ps1() {
+    PS1="$V$GRE\$$RST$E "
+}
+
+PS1="$V$BGB$MAG$E[$V$GRE$E\u$V$RST$BGB$E@$V$GRE$E\h $V$YEL$E\w$V$RST$BGB$MAG$E]$V$RST$E\n\$ "
 if [ "${#PROMPT_COMMAND[@]}" -eq 1 ]; then
     hash cgb && PROMPT_COMMAND+=('[[ $PWD = $HOME/* ]] && cgb')
 fi
