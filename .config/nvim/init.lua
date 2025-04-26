@@ -92,6 +92,7 @@ vim.keymap.set('v', 'H', 'dhPgvhoho')
 vim.keymap.set('v', 'L', 'dpgvlolo')
 vim.keymap.set('s', 'h', '<esc>"_xf<space>pF<space>;gh')
 vim.keymap.set('s', 'l', 'l<space><esc>hr<space>f<space>;"_xF<space>gh')
+vim.keymap.set('t', '<c-j>', '<c-\\><c-n>')
 
 set.rtp:prepend(vim.fn.stdpath('data') .. '/lazy/lazy.nvim')
 require('lazy').setup({
@@ -174,10 +175,19 @@ function ccolors()
     vim.cmd.colorscheme('habamax')
     local set_hl = vim.api.nvim_set_hl
 
-    local fg = '#d9dbda'
     local ign = '#988f81'
-    local ws = '#1b2019'
-    set_hl(0, 'Normal',                {fg = fg, bg = '#0b1009'})
+
+    -- Green
+    -- local fg = '#d9dbba'
+    -- local bg = '#0b1009'
+    -- local ws = '#1b2019'
+
+    -- Mono
+    local fg = '#d0d8c8'
+    local bg = '#0d0d0d'
+    local ws = '#1a0d0d'
+
+    set_hl(0, 'Normal',                {fg = fg, bg = bg})
 
     -- override
     set_hl(0, 'Directory',             {fg = fg})
@@ -240,3 +250,12 @@ vim.api.nvim_create_autocmd(
     {'BufWinEnter'},
     {pattern = '*', command = [[match Whitespace /\s\+$/]]}
 )
+
+if vim.g.neovide then
+    set.mouse = 'nv'
+    vim.g.neovide_cursor_animation_length = 0
+    vim.g.neovide_cursor_antialiasing = 0
+    vim.g.neovide_cursor_trail_size = 0
+    vim.g.neovide_scroll_animation_length = 0.1
+    vim.o.guifont = 'Go Mono:b:h16:w-1'
+end
