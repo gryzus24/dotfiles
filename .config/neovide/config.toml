@@ -1,0 +1,21 @@
+backtraces_path = '/tmp/neovide_bts'
+
+[font]
+size = 16
+width = -1
+hinting = 'slight'
+
+[[font.normal]]
+family = 'Go Mono'
+style = 'Bold'
+
+[[font.italic]]
+family = 'Go Mono'
+style = 'Bold Italic'
+
+[box-drawing]
+# 'font-glyph', 'native' or 'selected-native'
+mode = 'font-glyph'
+
+[box-drawing.sizes]
+default = [2, 4]
