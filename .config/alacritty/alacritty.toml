@@ -1,3 +1,6 @@
+# [env]
+# TERM = "xterm-256color"
+
 [colors]
 draw_bold_text_with_bright_colors = true
 
@@ -31,6 +34,9 @@ red     = "0xff3c3b"
 white   = "0xffffff"
 yellow  = "0xecbe7b"
 
+[colors.vi_mode_cursor]
+cursor = "0xff6c6b"
+
 [colors.primary]
 # Light
 #foreground = "0x2f2f00"
@@ -44,35 +50,24 @@ yellow  = "0xecbe7b"
 foreground = "0xd0d8c8"
 background = "0x0d0d0d"
 
-# [env]
-# TERM = "xterm-256color"
-
 [font]
 builtin_box_drawing = true
-size = 12
-
-[font.bold]
-family = "Go Mono"
-style = "Bold"
-
-[font.bold_italic]
-family = "Go Mono"
-style = "Bold Italic"
-
-[font.glyph_offset]
-x = 0
-y = 0
-
-[font.italic]
-family = "Go Mono"
-style = "Italic"
+size = 16
 
 [font.normal]
 family = "Go Mono"
-style = "Regular"
+style = "Bold"
+
+[font.italic]
+family = "Go Mono"
+style = "Bold Italic"
 
 [font.offset]
 x = -1
+y = 0
+
+[font.glyph_offset]
+x = 0
 y = 0
 
 [[keyboard.bindings]]
@@ -203,7 +198,7 @@ mode = "~Alt"
 mods = "Shift"
 
 [scrolling]
-history = 16384
+history = 65535
 multiplier = 4
 
 [window]
