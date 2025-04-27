@@ -13,8 +13,7 @@ Some scripts may be tagged:
   `specific`    these scripts may require some specific hardware configuration
                 in order to work correctly or to be by any means useful.
 
-  `wayland`     these scripts work only in the presence of the Wayland
-                compositor.
+  `wayland`     these scripts work only in the presence of a Wayland compositor.
 
 Scripts in ~/bin listed alphabetically
 ======================================
