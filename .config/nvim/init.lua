@@ -32,11 +32,11 @@ end
 -- nm_*: must be called in normal mode
 -- *_im: returns in insert mode
 function nm_newline_check_close_bracket_im()
-    opening = {'{', '[', '('}
-    closing = {'}', ']', ')'}
+    local opening = {'{', '[', '('}
+    local closing = {'}', ']', ')'}
 
-    line = vim.api.nvim_get_current_line()
-    lastch = line:sub(#line, #line)
+    local line = vim.api.nvim_get_current_line()
+    local lastch = line:sub(#line, #line)
 
     vim.api.nvim_feedkeys('o', 'n', false)
     for i = 1, #opening do
@@ -45,6 +45,17 @@ function nm_newline_check_close_bracket_im()
             return
         end
     end
+end
+
+function vm_visual_range()
+    local vbeg = vim.fn.getpos('v')[3]
+    local vend = vim.fn.getpos('.')[3]
+    if vend < vbeg then
+        local t = vend
+        vend = vbeg
+        vbeg = t
+    end
+    return vbeg, vend
 end
 
 function set_snippet(name)
@@ -73,8 +84,8 @@ vim.keymap.set('n', '<c-1>', '<cmd>cprev<cr>')
 vim.keymap.set('n', '<c-2>', '<cmd>cnext<cr>')
 vim.keymap.set('i', '<cr>',
     function()
-        col = vim.api.nvim_win_get_cursor(0)[2]
-        line = vim.api.nvim_get_current_line()
+        local col = vim.api.nvim_win_get_cursor(0)[2]
+        local line = vim.api.nvim_get_current_line()
 
         -- cursor at eol and not whitespace-only line
         if col >= #line and #line:match('%s*') < #line then
@@ -88,10 +99,25 @@ vim.keymap.set('i', '<cr>',
 )
 vim.keymap.set('v', '<bs>', '"_x')
 vim.keymap.set('v', '<space>s', '"zy:%s/<c-r>z//g<left><left>')
-vim.keymap.set('v', 'H', 'dhPgvhoho')
-vim.keymap.set('v', 'L', 'dpgvlolo')
-vim.keymap.set('s', 'h', '<esc>"_xf<space>pF<space>;gh')
-vim.keymap.set('s', 'l', 'l<space><esc>hr<space>f<space>;"_xF<space>gh')
+vim.keymap.set('v', 'H', function()
+    local vbeg, vend = vm_visual_range()
+    if vbeg > 1 then
+        local line = vim.api.nvim_get_current_line()
+        tfeedkeys('d')
+        if vend < #line then
+            tfeedkeys('h')
+        end
+        tfeedkeys('Pgvhoho')
+    end
+end)
+vim.keymap.set('v', 'L', function()
+    local vbeg, vend = vm_visual_range()
+    if vend < #vim.api.nvim_get_current_line() then
+        tfeedkeys('dpgvlolo')
+    end
+end)
+vim.keymap.set('s', 'h', '<esc>"_xf<space>i<space><esc>,gh')
+vim.keymap.set('s', 'l', '<esc>a<space><esc>f<space>"_x,gh')
 vim.keymap.set('t', '<c-j>', '<c-\\><c-n>')
 
 set.rtp:prepend(vim.fn.stdpath('data') .. '/lazy/lazy.nvim')
