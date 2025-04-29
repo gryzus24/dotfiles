@@ -252,7 +252,7 @@ vim.api.nvim_create_autocmd(
 )
 
 if vim.g.neovide then
-    set.mouse = 'nv'
+    set.mouse = 'a'
     vim.g.neovide_cursor_animation_length = 0
     vim.g.neovide_cursor_antialiasing = 0
     vim.g.neovide_cursor_trail_size = 0
@@ -261,5 +261,6 @@ if vim.g.neovide then
 
     vim.keymap.set('n', '<cs-v>', '"+P')
     vim.keymap.set('i', '<cs-v>', '<space><esc>v"+Pa')
+    vim.keymap.set('c', '<cs-v>', '<c-r>+')
     vim.keymap.set('v', '<cs-c>', '"+ygv')
 end

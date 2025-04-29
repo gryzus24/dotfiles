@@ -1,4 +1,5 @@
 local telescope = require('telescope')
+local actions = require('telescope.actions')
 
 telescope.setup({
     defaults = {
@@ -9,6 +10,14 @@ telescope.setup({
                 height = 0.92,
                 width = 0.9,
             };
+        },
+        mappings = {
+            i = {
+                ['<c-d>'] = actions.delete_buffer,
+            },
+            n = {
+                ['dd'] = actions.delete_buffer,
+            },
         },
     },
     extensions = {
