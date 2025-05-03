@@ -227,6 +227,21 @@ Scripts in ~/bin listed alphabetically
   Dependencies
     * dash (shell)
 
+- sway-prop
+    Get properties of a top-level by clicking on it.
+  Options
+    all    get all properties (default)
+    rect   get {slurp,grim}-compatible window rectangle in px (<x>,<y> <w>x<h>)
+    <key>  get property value for <key>, shorthand for:
+             sway-prop | jq -r .<key>
+  Usage
+    $ sway-prop [all|rect|<key>]
+    $ sway-prop rect | grim -g -
+  Dependencies
+    * dash (shell)
+    * swaymsg, slurp
+    * jq
+
 - touchpad-toggle (specific)
     Toggle (enable/disable) the Synaptics TouchPad.
 
