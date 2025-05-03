@@ -1,54 +1,15 @@
-# [env]
-# TERM = "xterm-256color"
+[env]
+TERM = "xterm-256color"
 
-[colors]
-draw_bold_text_with_bright_colors = true
+#[general]
+#import = ["colors.toml"]
 
-[colors.dim]
-black   = "0x000000"
-blue    = "0x506d8f"
-cyan    = "0x497e7a"
-green   = "0x7a8530"
-magenta = "0x80638e"
-red     = "0x8c3336"
-white   = "0x9a9a9a"
-yellow  = "0x97822e"
-
-[colors.normal]
-black   = "0x1c1f24"
-blue    = "0x3071db"
-cyan    = "0x5699af"
-green   = "0x98be65"
-magenta = "0x8a549a"
-red     = "0xff6c6b"
-white   = "0xbbc2cf"
-yellow  = "0xda8548"
-
-[colors.bright]
-black   = "0x5b6268"
-blue    = "0x51afef"
-cyan    = "0x46d9ff"
-green   = "0xb6d193"
-magenta = "0xc678dd"
-red     = "0xff3c3b"
-white   = "0xffffff"
-yellow  = "0xecbe7b"
+[colors.primary]
+foreground = "0xccd0cc"
+background = "0x0c1000"
 
 [colors.vi_mode_cursor]
 cursor = "0xff6c6b"
-
-[colors.primary]
-# Light
-#foreground = "0x2f2f00"
-#background = "0xffffd0"
-
-# Green
-#foreground = "0xd9dbba"
-#background = "0x0b1009"
-
-# Mono
-foreground = "0xd0d8c8"
-background = "0x0d0d0d"
 
 [font]
 builtin_box_drawing = true
@@ -56,11 +17,11 @@ size = 16
 
 [font.normal]
 family = "Go Mono"
-style = "Bold"
+style = "Regular"
 
 [font.italic]
 family = "Go Mono"
-style = "Bold Italic"
+style = "Italic"
 
 [font.offset]
 x = -1
