@@ -203,17 +203,11 @@ function ccolors()
 
     local ign = '#988f81'
 
-    -- Green
-    -- local fg = '#d9dbba'
-    -- local bg = '#0b1009'
-    -- local ws = '#1b2019'
+    local fg = '#ccd0cc'
+    local bg = '#0c1000'
+    local ws = '#182018'
 
-    -- Mono
-    local fg = '#d0d8c8'
-    local bg = '#0d0d0d'
-    local ws = '#1a0d0d'
-
-    set_hl(0, 'Normal',                {fg = fg, bg = bg})
+    set_hl(0, 'Normal',                {})
 
     -- override
     set_hl(0, 'Directory',             {fg = fg})
