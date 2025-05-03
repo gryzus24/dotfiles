@@ -16,11 +16,15 @@ BGB='\033[40m'
 V=$'\x01'
 E=$'\x02'
 
-simple_ps1() {
-    PS1="$V$GRE\$$RST$E "
+ps1_simple() {
+    PS1="$V$GRE$E\$$V$RST$E "
 }
 
-PS1="$V$BGB$MAG$E[$V$GRE$E\u$V$RST$BGB$E@$V$GRE$E\h $V$YEL$E\w$V$RST$BGB$MAG$E]$V$RST$E\n\$ "
+ps1_normal() {
+    PS1="$V$BGB$MAG$E[$V$GRE$E\u$V$RST$BGB$E@$V$GRE$E\h $V$YEL$E\w$V$RST$BGB$MAG$E]$V$RST$E\n\$ "
+}
+
+ps1_normal
 if [ "${#PROMPT_COMMAND[@]}" -eq 1 ]; then
     hash cgb && PROMPT_COMMAND+=('[[ $PWD = $HOME/* ]] && cgb')
 fi
