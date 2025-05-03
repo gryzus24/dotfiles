@@ -23,7 +23,7 @@ Scripts in ~/bin listed alphabetically
     directory and refresh the font cache.
   Dependencies
     * dash (shell)
-    * git, fc-cache
+    * fontconfig, git
 
 - brightness (see source, specific)
     Set backlight brightness to <n> * STEP or query the current
@@ -75,7 +75,7 @@ Scripts in ~/bin listed alphabetically
     and print on stdout.
   Dependencies
     * dash (shell)
-    * grim, slurp, magick, wl-copy
+    * grim, imagemagick, slurp, wl-copy
 
 - cpu-scaling
     Print information related to system's CPU frequency scaling and power
@@ -167,6 +167,7 @@ Scripts in ~/bin listed alphabetically
     List all installed pacman packages sorted by size.
   Dependencies
     * python (3.7+)
+    * pacman
 
 - pactl-next-sink
     Switch to the next available pipewire/pulseaudio sink.
@@ -239,8 +240,7 @@ Scripts in ~/bin listed alphabetically
     $ sway-prop rect | grim -g -
   Dependencies
     * dash (shell)
-    * swaymsg, slurp
-    * jq
+    * jq, slurp, swaymsg
 
 - touchpad-toggle (specific)
     Toggle (enable/disable) the Synaptics TouchPad.
@@ -249,7 +249,7 @@ Scripts in ~/bin listed alphabetically
     Update the /etc/pacman.d/mirrorlist file.
   Dependencies
     * dash (shell)
-    * reflector, diff
+    * diff, reflector
 
 - wsort
     Sort words on a line or multiple lines
