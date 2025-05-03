@@ -8,33 +8,39 @@ xwayland disable
 primary_selection disable
 
 set $mod Mod1
-set $border_pixels 1
+set $tborder 1
+set $fborder 4
 set $cursor_size 16
-set $igap 9
-set $ogap 0
+set $cursor_theme retrosmart-xcursor-white
+set $igap 11
+set $ogap -2
+
+set $sgc #000000
+set $mgc #182018
+set $lgc #405040
+set $qgc #667666
+set $dxt #9eae9e
+set $txt #ffffff
 
 gaps inner $igap
 gaps outer $ogap
 
-## Green
-# set $sgc #080d06
-# set $mgc #172112
-# set $lgc #304525
-# set $qgc #64904d
-# set $dxt #d9dbda
-# set $txt #ffffff
+default_border pixel $tborder
+focus_wrapping no
+hide_edge_borders smart_no_gaps
+smart_gaps yes
 
-## Mono
-set $sgc #000000
-set $mgc #181818
-set $lgc #404040
-set $qgc #666666
-set $dxt #9e9e9e
-set $txt #ffffff
+floating_modifier $mod
+floating_maximum_size -1 x -1
+
+seat * {
+  hide_cursor when-typing yes
+  xcursor_theme $cursor_theme $cursor_size
+}
 
 input * {
-  xkb_layout "pl"
-  xkb_options "caps:escape"
+  xkb_layout pl
+  xkb_options caps:escape
   repeat_delay 160
   repeat_rate 60
   accel_profile flat
@@ -43,101 +49,99 @@ input 1133:50498:Logitech_Wireless_Receiver_Mouse {
   pointer_accel 0.5
 }
 input 1386:768:Wacom_Bamboo_One_S_Pen {
-    tool_mode pen absolute
-    map_to_output DP-2
-    map_from_region 0x0mm 70x40mm
+  tool_mode pen absolute
+  map_to_output DP-2
+  map_from_region 0x0mm 70x40mm
 }
 
 output * {
   bg $mgc solid_color
   adaptive_sync yes
   allow_tearing yes
+  subpixel none
 }
 
-for_window [app_id="Alacritty"] max_render_time 4
+for_window [app_id="Alacritty"] max_render_time 5
 
-seat * {
-  hide_cursor when-typing enable
-  xcursor_theme default $cursor_size
-}
+## == Actions =================================================================
 
-default_border pixel $border_pixels
-focus_wrapping no
-hide_edge_borders smart_no_gaps
-smart_gaps on
+bindsym $mod+h                 focus left
+bindsym $mod+j                 focus down
+bindsym $mod+k                 focus up
+bindsym $mod+l                 focus right
 
-floating_modifier $mod
-floating_maximum_size -1 x -1
+bindsym $mod+comma             focus output left
+bindsym $mod+period            focus output right
+bindsym $mod+space             focus mode_toggle
 
-bindsym $mod+Shift+q     kill
-bindsym $mod+w           layout tabbed
-bindsym $mod+e           layout toggle split
-bindsym $mod+Shift+e     exec thunar
-# r
-bindsym $mod+t           exec $TERMINAL
-bindsym $mod+Return      exec $TERMINAL
-bindsym $mod+Shift+t     exec thunderbird
-# y
-# u
-bindsym $mod+i           workspace prev_on_output
-bindsym $mod+o           workspace next_on_output
-# p
-bindsym $mod+a           split none; focus parent
-bindsym $mod+s           layout stacking
-bindsym $mod+Shift+s     sticky toggle
-bindsym $mod+d           exec --no-startup-id fuzzel
-bindsym $mod+f           fullscreen toggle
-# g
-bindsym $mod+h           focus left
-bindsym $mod+Shift+h     move left
-bindsym Control+Shift+h  resize grow width 40 px
-bindsym $mod+j           focus down
-bindsym $mod+Shift+j     move down
-bindsym Control+Shift+j  resize grow height 40 px
-bindsym $mod+k           focus up
-bindsym $mod+Shift+k     move up
-bindsym Control+Shift+k  resize shrink height 40 px
-bindsym $mod+l           focus right
-bindsym $mod+Shift+l     move right
-bindsym Control+Shift+l  resize shrink width 40 px
-bindsym $mod+z           focus child; split none
-# x
-bindsym $mod+c           exec --no-startup-id cliphist list \
-                              | fuzzel --dmenu -p 'copy> ' \
-                              | cliphist decode \
-                              | wl-copy
-bindsym $mod+Shift+c     reload
-# v
-bindsym $mod+b           exec $BROWSER
-bindsym $mod+n           split toggle
-bindsym $mod+m           bar mode toggle
-bindsym $mod+Shift+m     exec --no-startup-id "$HOME/bin/pactl-next-sink"
+bindsym $mod+i                 workspace prev_on_output
+bindsym $mod+o                 workspace next_on_output
 
-bindsym $mod+minus       scratchpad show
-bindsym $mod+Shift+minus move scratchpad
-# equal
-bindsym $mod+space       focus mode_toggle
-bindsym $mod+Shift+space floating toggle; \
-                         [floating] border pixel 5; \
-                         [tiling] border pixel $border_pixels
+bindsym $mod+Shift+h           move left
+bindsym $mod+Shift+j           move down
+bindsym $mod+Shift+k           move up
+bindsym $mod+Shift+l           move right
 
-bindsym $mod+period          focus output right
-bindsym Control+Shift+period gaps inner all plus 2
+bindsym $mod+e                 layout toggle split
+bindsym $mod+s                 layout stacking
+bindsym $mod+w                 layout tabbed
 
-bindsym $mod+comma          focus output left
-bindsym Control+Shift+comma gaps inner all minus 2
+bindsym $mod+n                 split toggle
+bindsym $mod+a                 split none; focus parent
+bindsym $mod+z                 focus child; split none
 
-bindsym Control+Shift+slash gaps inner all toggle $igap; \
-                            gaps outer all toggle $ogap
+bindsym Control+Shift+h        resize grow width 40 px
+bindsym Control+Shift+j        resize grow height 40 px
+bindsym Control+Shift+k        resize shrink height 40 px
+bindsym Control+Shift+l        resize shrink width 40 px
+bindsym Control+Shift+comma    gaps inner all minus 2
+bindsym Control+Shift+period   gaps inner all plus 2
+bindsym Control+Shift+slash    gaps inner all toggle $igap; \
+                               gaps outer all toggle $ogap
 
-bindsym Shift+Print exec --no-startup-id grim -g "$(slurp)"
+bindsym $mod+f                 fullscreen toggle
+bindsym $mod+Shift+space       floating toggle; \
+                               [floating] border pixel $fborder; \
+                               [tiling] border pixel $tborder
 
-bindsym XF86MonBrightnessUp   exec --no-startup-id xbacklight -inc 1
-bindsym XF86MonBrightnessDown exec --no-startup-id xbacklight -dec 1
-bindsym XF86AudioRaiseVolume  exec --no-startup-id pamixer -i 5
-bindsym XF86AudioLowerVolume  exec --no-startup-id pamixer -d 5
-bindsym XF86AudioMute         exec --no-startup-id pamixer -t
-bindsym XF86TouchpadToggle    exec --no-startup-id "$HOME/bin/touchpad-toggle"
+bindsym $mod+m                 bar mode toggle
+bindsym $mod+Shift+c           reload
+bindsym $mod+Shift+q           kill
+bindsym $mod+Shift+s           sticky toggle
+
+bindsym $mod+minus             scratchpad show
+bindsym $mod+Shift+minus       move scratchpad
+
+## == Programs ================================================================
+
+bindsym $mod+Return            exec $TERMINAL
+bindsym $mod+Shift+e           exec thunar
+bindsym $mod+Shift+t           exec thunderbird
+bindsym $mod+b                 exec $BROWSER
+bindsym $mod+d                 exec fuzzel
+bindsym $mod+t                 exec $TERMINAL
+
+## == Scripts =================================================================
+
+bindsym $mod+c                 exec --no-startup-id cliphist list \
+                                    | fuzzel --dmenu -p 'copy> ' \
+                                    | cliphist decode \
+                                    | wl-copy
+bindsym $mod+Shift+m           exec --no-startup-id pactl-next-sink
+
+bindsym XF86AudioLowerVolume   exec --no-startup-id pamixer -d 5
+bindsym XF86AudioMute          exec --no-startup-id pamixer -t
+bindsym XF86AudioRaiseVolume   exec --no-startup-id pamixer -i 5
+bindsym XF86MonBrightnessDown  exec --no-startup-id xbacklight -dec 1
+bindsym XF86MonBrightnessUp    exec --no-startup-id xbacklight -inc 1
+bindsym XF86TouchpadToggle     exec --no-startup-id touchpad-toggle
+
+bindsym Print                  exec --no-startup-id grim -l 9
+bindsym Shift+Print            exec --no-startup-id grim -l 9 -g "$(slurp)"
+bindsym Control+Shift+Print    exec --no-startup-id sway-prop window_rect \
+                                    | grim -l 9 -g -
+
+## == Workspaces ==============================================================
 
 set $ws1 "1"
 set $ws2 "2"
@@ -166,9 +170,6 @@ bindsym $mod+Shift+6 move container to workspace number $ws6
 bindsym $mod+Shift+7 move container to workspace number $ws7
 bindsym $mod+Shift+8 move container to workspace number $ws8
 
-bindsym $mod+Control+Shift+h move workspace to output left
-bindsym $mod+Control+Shift+l move workspace to output right
-
 bindsym $mod+Control+Shift+1 rename workspace to $ws1
 bindsym $mod+Control+Shift+2 rename workspace to $ws2
 bindsym $mod+Control+Shift+3 rename workspace to $ws3
@@ -177,6 +178,11 @@ bindsym $mod+Control+Shift+5 rename workspace to $ws5
 bindsym $mod+Control+Shift+6 rename workspace to $ws6
 bindsym $mod+Control+Shift+7 rename workspace to $ws7
 bindsym $mod+Control+Shift+8 rename workspace to $ws8
+
+bindsym $mod+Control+Shift+h move workspace to output left
+bindsym $mod+Control+Shift+l move workspace to output right
+
+## == Looks ===================================================================
 
 font pango:Terminus 10
 
@@ -205,6 +211,8 @@ bar {
     binding_mode       #2f343a #900000 $txt
   }
 }
+
+# == Startup ==================================================================
 
 exec gsettings set org.gnome.desktop.interface cursor-size $cursor_size
 
