@@ -16,7 +16,7 @@ tree_select_rect() {
 tree_props_of_rect() {
     local tree="$1"
     local rect="$2"
-    local x; local y; local w; local h
+    local x y w h
 
     IFS=', x' read -r x y w h <<EOF
         $rect
