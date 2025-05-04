@@ -11,14 +11,23 @@ export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_STATE_HOME="$HOME/.local/state"
 
-export EDITOR=vim
-export VISUAL=vim
+if type -p nvim >/dev/null; then
+    export EDITOR=nvim
+    export VISUAL=nvim
+else
+    export EDITOR=vim
+    export VISUAL=vim
+fi
+if type -p librewolf >/dev/null; then
+    export BROWSER=librewolf
+else
+    export BROWSER=firefox
+fi
 export PAGER=less
 export LESS=-iR
 # I wonder if they ever reconsider the brain-damaged decision of not supporting
 # .inputrc ... https://github.com/python/cpython/issues/118840
 export PYTHON_BASIC_REPL=1
-type -p librewolf >/dev/null && export BROWSER=librewolf || export BROWSER=firefox
 
 if type -p alacritty >/dev/null; then
     export TERMINAL=alacritty
@@ -27,7 +36,7 @@ else
     export TERMINAL=
 fi
 
-export _PLATFORM=laptop
+export _PLATFORM=desktop
 if type -p sway >/dev/null; then
     export _WM=sway
 elif type -p i3 >/dev/null; then
@@ -48,6 +57,6 @@ case "$_WM" in
         [[ "$XDG_VTNR" == 1 && -z "$DISPLAY" ]] && exec startx
         ;;
     *)
-        printf 'ERROR: _WM=%s\n' "$_WM"
+        echo "ERROR: _WM=$_WM" >&2
         ;;
 esac
