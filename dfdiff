@@ -45,8 +45,13 @@ printf '%s\n' "$fnames" | while read -r file; do
     printf '%s\t%s\n' "$home_file_path" "$file"
     printf 'Open in vimdiff [Y/n]: ' >&2
     read -r ans <&3
-    if [ -z "$ans" ] || [ "$ans" = 'y' ] || [ "$ans" = 'Y' ]; then
-        <&3 vimdiff "$home_file_path" "$file"
+    if [ -z "$ans" -o "$ans" = 'y' -o "$ans" = 'Y' ]; then
+        if [ "$EDITOR" = vim -o "$EDITOR" = nvim ]; then
+            E="$EDITOR -d"
+        else
+            E=vimdiff
+        fi
+        <&3 $E "$home_file_path" "$file"
     fi
 done
 exec 3<&-
