@@ -116,6 +116,9 @@ vim.keymap.set('v', 'L', function()
         tfeedkeys('dpgvlolo')
     end
 end)
+vim.keymap.set('v', '<c-i>', [[:move '<-2'<cr>gv=gv]])
+vim.keymap.set('v', '<c-o>', [[:move '>+1'<cr>gv=gv]])
+
 vim.keymap.set('s', 'h', '<esc>"_xf<space>i<space><esc>,gh')
 vim.keymap.set('s', 'l', '<esc>a<space><esc>f<space>"_x,gh')
 vim.keymap.set('t', '<c-j>', '<c-\\><c-n>')
@@ -266,10 +269,18 @@ end
 
 ccolors()
 
-vim.api.nvim_create_autocmd(
-    {'BufWinEnter'},
-    {pattern = '*', command = [[match Whitespace /\s\+$/]]}
-)
+vim.api.nvim_create_augroup('YankHighlight', {clear = true})
+vim.api.nvim_create_autocmd('TextYankPost', {
+    group = 'YankHighlight',
+    callback = function()
+        vim.hl.on_yank({higroup = 'IncSearch', timeout = 160})
+    end
+})
+
+vim.api.nvim_create_autocmd('BufWinEnter', {
+    pattern = '*',
+    command = [[match Whitespace /\s\+$/]]
+})
 
 if vim.g.neovide then
     set.mouse = 'a'
