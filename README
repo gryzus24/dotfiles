@@ -7,20 +7,22 @@ What you might find partly useful are the scripts.
 Some scripts may be tagged:
 
   `see source`  these scripts may contain hard-coded values or exhibit
-                undesirable behavior; you should certainly read and understand
-                their source code before executing them.
+                undesirable behavior; you should certainly read and
+                understand their source code before executing them.
 
-  `specific`    these scripts may require some specific hardware configuration
-                in order to work correctly or to be by any means useful.
+  `specific`    these scripts may require some specific hardware
+                configuration in order to work correctly or to be by any
+                means useful.
 
-  `wayland`     these scripts work only in the presence of a Wayland compositor.
+  `wayland`     these scripts work only in the presence of a Wayland
+                compositor.
 
 Scripts in ~/bin listed alphabetically
 ======================================
 
 - _installgofonts (see source)
-    Install the best fonts to the ~/.local/share/fonts/Go
-    directory and refresh the font cache.
+    Install the best fonts to the ~/.local/share/fonts/Go directory and
+    refresh the font cache.
   Dependencies
     * dash (shell)
     * fontconfig, git
@@ -69,6 +71,68 @@ Scripts in ~/bin listed alphabetically
     * gcc/clang
   Installation
     $ PROGS=cgb ~/bin/src/install.sh
+  Notes
+    To completely avoid forking and thus inflating PID allocations, a
+    pure bash solution may be used - check out the `sh_cgb` function in
+    my ~/.bashrc - it is even better than the cgb binary at achieving
+    its goal.
+
+    If you want to benchmark it yourself, here is a primer on cgroup CPU
+    isolation with systemd. Assuming:
+      - You have an SMP machine with at least 2 cores.
+      - Systemd infected environment.
+      - Kernel compiled with CONFIG_CPUSETS=y and perf support.
+      - Bash shell (command-lines starting with '#' run as root
+        and '$' run as your user).
+
+    Run:
+      # systemctl set-property --runtime user.slice \
+        AllowedCPUs="0-$((`nproc --all`-2))"
+      # systemctl set-property --runtime system.slice \
+        AllowedCPUs="0-$((`nproc --all`-2))"
+      $ systemd-run --scope --slice=isol --unit=isol \
+        -p AllowedCPUs="$((`nproc --all`-1))" bash
+
+    Now, you have a shell restricted to the last core of your processor.
+    Every command the shell executes will be run in the same cgroup and
+    will inherit the CPU affinity.
+
+    In another shell (outside the isolated cgroup), run:
+      # perf stat -e context-switches,page-faults,instructions:u -aC 3 -I 1000
+
+    If you happen to notice a lot of context-switches when moving the
+    mouse or when there are a lot of on-screen changes, you probably
+    have GPU IRQs assigned to the same CPU as the isolated cgroup is
+    allowed to use. If so, you can reroute the offending IRQs:
+
+      First, observe which IRQs are assigned to the last CPU and note
+      the IRQ number of the IRQ you want to reroute:
+        $ less /proc/interrupts
+
+      Then, assign it to some other CPU. `smp_affinity` expects an
+      affinity mask. To assign the IRQ with <IRQ-number> to CPU0:
+        # echo 1 >/proc/irq/<IRQ-number>/smp_affinity
+
+      If you don't know what you're doing, but reached this point, you
+      are probably wondering why the last command failed with:
+        bash: /proc/irq/<IRQ-number>/smp_affinity: Permission denied
+
+      I will not be explaining it here... you can just use the following
+      command instead of the last one (notice the PS1 change?):
+        $ echo 1 | sudo tee /proc/irq/<IRQ-number>/smp_affinity
+
+    Other system activity might introduce additional kernel work or IPIs
+    on the isolated CPU. If you have an SMT capable processor, disabling
+    SMT or, at least, isolating or offlining the sibling of the CPU in
+    the cgroup might help. You can generate a nice PNG of your system
+    topology with the `lstopo` utility:
+      $ lstopo /tmp/topo.png
+
+    If you need to go further than that, you can try the isolcpus= and
+    nohz_full= kernel parameters provided your kernel supports them.
+
+    Congratulations! You have made a lot of changes to your running
+    system, and I will not be telling you how to revert them, have fun!
 
 - colorpicker (wayland)
     Pick the top-left pixel color of the selection, copy it to clipboard
@@ -78,12 +142,12 @@ Scripts in ~/bin listed alphabetically
     * grim, imagemagick, slurp, wl-copy
 
 - cpu-scaling
-    Print information related to system's CPU frequency scaling and power
-    management policies. Only intel_pstate driver is recognized. If <n> is
-    specified, query current CPU frequency as reported by the kernel i.e.
-     * aperf/mperf delta from the last non-idle tick or current minimum
-       frequency if no recent enough tick data was available for ~20ms
-    every <n> milliseconds.
+    Print information related to system's CPU frequency scaling and
+    power management policies. Only intel_pstate driver is recognized.
+    If <n> is specified, query current CPU frequency as reported by the
+    kernel - aperf/mperf delta from the last non-idle tick or current
+    minimum frequency if no recent enough tick data was available for
+    ~20ms - every <n> milliseconds.
   Usage
     $ cpu-scaling [<n>]
   Dependencies
@@ -96,7 +160,7 @@ Scripts in ~/bin listed alphabetically
     * python (3.8+)
 
 - dirg
-    Group file paths by the directories they belong to.  File paths
+    Group file paths by the directories they belong to. File paths
     should be newline delimited and provided as standard input.
   Options
     a  sort alphabetically
@@ -106,10 +170,6 @@ Scripts in ~/bin listed alphabetically
     $ <command> | dirg [a] [c] [h]
     $ locate path | dirg c
     $ find . -type f | dirg ac
-  Alternatives
-    If a more readable tree output is preferred
-    the tree(1) utility should be used.
-    $ <command> | tree --fromfile -d
   Dependencies
     * python (3.7+)
   Binary version
@@ -117,18 +177,22 @@ Scripts in ~/bin listed alphabetically
       * zig (0.12.0)
     Installation
       $ PROGS=dirg ~/bin/src/install.sh
+  Notes
+    If a more readable tree output is preferred
+    the tree(1) utility may be used.
+    $ <command> | tree --fromfile -d
 
 - grepalign
     Align every line of grep output to the first colored match.
   Options
-    mask  output mask in a form XXX where X is either a '0' or a '1',
-          text before a match _///  mask is equal to 111 if left unspecified.
-          match itself ________//
-          text after a match __/
+    mask  output mask in the form XXX where X is either a '0' or a '1'
+          [text before a match] _///  - 111 if left unspecified.
+          [match itself] ________//
+          [text after a match] __/
   Usage
     Generic:
       $ grep --color=always [...] | grepalign [mask]
-    Or with the helpers from ~/.bash_aliases:
+    Or with the helpers from ~/.bashrc:
       $ faketty grep --color=auto [...] | grepalign [mask]
       $ agrep [...]
   Dependencies
@@ -142,8 +206,8 @@ Scripts in ~/bin listed alphabetically
     * xclip (on Xorg), wl-copy (on Wayland)
 
 - lscat
-    Recursively iterate over all files in the current working directory, print
-    their file path and use the cat command on them.
+    Recursively iterate over all files in the current working directory,
+    print their file path and use the cat command on them.
   Dependencies
     * dash (shell)
 
@@ -176,9 +240,9 @@ Scripts in ~/bin listed alphabetically
     * pactl
 
 - rename-tool
-    Run <command> (e.g. an image viewer) on every <file> and ask for a new
-    name for that <file>.  Does not allow overwriting a file that already
-    exists on the filesystem.
+    Run <command> (e.g. an image viewer) on every <file> and ask for a
+    new name for that <file>. Does not allow overwriting a file that
+    already exists on the filesystem.
   Limitations
     * does not support two-cell wide character input (i.e. Kanji, emoji)
     * does not allow coming back to an already renamed file
@@ -189,15 +253,16 @@ Scripts in ~/bin listed alphabetically
     * python (3.7+)
 
 - scrot-clip (see source)
-    Run scrot in "--select" mode and copy the selected image to clipboard.
+    Run scrot in "--select" mode and copy the selected image to
+    clipboard.
   Dependencies
     * dash (shell)
     * scrot, xclip
     * xdotool (required when using unclutter)
 
 - scrot-sxiv (see source)
-    Run scrot in "--select --freeze" mode, save the selected image
-    to $XDG_PICTURES/Scrots and open it in sxiv.
+    Run scrot in "--select --freeze" mode, save the selected image to
+    $XDG_PICTURES/Scrots and open it in sxiv.
   Dependencies
     * dash (shell)
     * scrot, sxiv
@@ -252,8 +317,8 @@ Scripts in ~/bin listed alphabetically
     * diff, reflector
 
 - wsort
-    Sort words on a line or multiple lines
-    (preserves line order and whitespace).
+    Sort words on a line or multiple lines (preserves line order and
+    whitespace).
   Usage
     Generic:
       $ echo 'Ala    ma wielkiego    kota' | wsort
@@ -263,15 +328,19 @@ Scripts in ~/bin listed alphabetically
     * python (3.7+)
 
 - zram (see source)
-    Set up swap on zram (8G block device with zstd compression) and change
-    the vm.swappiness value to 180 (prioritize scanning anonymous folios
-    for swap-out as opposed to file-backed folios)
+    Set up swap on zram (8G block device with zstd compression) and
+    change the vm.swappiness value to 180 (prioritize scanning anonymous
+    folios for swap-out as opposed to file-backed folios)
   Dependencies
     * dash (shell)
     * kernel compiled with CONFIG_ZRAM=m
 
-Bash functions in ~/.bash_aliases
-=================================
+Bash functions from ~/.bashrc
+=============================
+
+- agrep
+    Alias to grep piped into grepalign.
+
 - cdw
     cd into $(dirname $(which $1)).
 
@@ -280,8 +349,11 @@ Bash functions in ~/.bash_aliases
   Usage
     $ faketty <command>
 
-- agrep
-    Alias to grep piped into grepalign.
+- icd
+    Edit cd target directory interactively.
+    Use <path> as the initial path or $PWD if unspecified.
+  Usage
+    icd [<path>]
 
 - wmem
     Watch (Buffers, Dirty and Writeback) entries from /proc/meminfo.
