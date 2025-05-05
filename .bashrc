@@ -8,26 +8,74 @@
 HISTCONTROL=ignoredups:erasedups
 HISTSIZE=100000
 
-YEL='\033[33;1m'
-GRE='\033[32m'
-MAG='\033[35m'
-RST='\033[m'
-BGB='\033[40m'
-V=$'\x01'
-E=$'\x02'
+# Sets current branch name to CGB on success. The caller is responsible
+# for clearing CGB. This function doesn't fork and is thus the ultimate
+# /cgb/.
+sh_cgb() {
+    # Add a leading / to avoid an infinite loop on relative paths in
+    # case someone, completely by accident, assigns to PWD something
+    # nasty or the shell reports '(unreachable)', but I'm not sure if
+    # that can be the case with bash.
+    local d="/$PWD" h
+
+    while :; do
+        h="$d/.git/HEAD"
+        if [[ -r "$h" ]]; then
+            local l r
+
+            # Do not suppress the read error,
+            # I would love to see it if the race happens.
+            IFS=': ' read -r l r <"$h" || return $?
+
+            local b=$'\x01\033[90m\x02'
+            if [[ -n "$r" ]]; then
+                CGB="$b(${r##*/}) "
+            else
+                # Detached HEAD state.
+                CGB="$b(${l:0:12}) "
+            fi
+            return 0
+        fi
+
+        d="${d%/*}"
+        # Note that the "/$HOME" checking fast-path works only if
+        # the starting directory was one directory down from $HOME.
+        if [[ "$d" == "/$HOME" || -z "$d" ]]; then
+            return 1
+        fi
+    done
+}
+
+prompt_cmd() {
+    # Set terminal title to something PS1 like.
+    local a='\u@\h:\w'
+    printf '\033]0;%s\007' "${a@P}"
+
+    # Update CGB.
+    CGB=
+    if [[ "$PWD" == $HOME/* ]]; then
+        sh_cgb
+    fi
+}
 
 ps1_simple() {
-    PS1="$V$GRE$E\$$V$RST$E "
+    local rs=$'\033[m'
+    local ye=$'\033[33;1m'
+    PS1="\$CGB\[$ye\]\$\[$rs\] "
 }
 
 ps1_normal() {
-    PS1="$V$BGB$MAG$E[$V$GRE$E\u$V$RST$BGB$E@$V$GRE$E\h $V$YEL$E\w$V$RST$BGB$MAG$E]$V$RST$E\n\$ "
+    local bb=$'\033[40m'
+    local gr=$'\033[32m'
+    local rs=$'\033[m'
+    local ye=$'\033[33;1m'
+    PS1="\[$bb\]\$CGB\[$gr\]\u@\h \[$ye\]\w \[$rs\]\n\[$ye\]\$\[$rs\] "
 }
 
-ps1_normal
-if [ "${#PROMPT_COMMAND[@]}" -eq 1 ]; then
-    hash cgb && PROMPT_COMMAND+=('[[ $PWD = $HOME/* ]] && cgb')
-fi
+# Override PROMPT_COMMAND from /etc/bash.bashrc.
+unset PROMPT_COMMAND
+PROMPT_COMMAND=prompt_cmd
+ps1_simple
 
 stty -ixon
 bind -x '"\C-l":clear -x'
@@ -75,7 +123,7 @@ alias chx='chmod +x'
 alias n='nvim'
 alias nal='$EDITOR $HOME/.config/alacritty/alacritty.toml'
 alias reset='reset && stty -ixon'
-if [ -n "$DISPLAY" ] && command -v devour >/dev/null; then
+if [[ -n "$DISPLAY" ]] && command -v devour >/dev/null; then
     alias zath='devour zathura'
 else
     alias zath='zathura'
@@ -83,19 +131,24 @@ fi
 
 ## Functions
 
+agrep() {
+    command grep --color=always "$@" | grepalign
+    return "${PIPESTATUS[0]}"
+}
+
 cdw() {
-  local path
-  path="$(which "$1")" || return 1
-  cd "$(dirname "$path")" || return 1
+    local path
+    path="$(which "$1")" || return 1
+    cd "$(dirname "$path")" || return 1
 }
 
 faketty() {
     script -qfec "$(printf "%q " "$@")" /dev/null
 }
 
-agrep() {
-    command grep --color=always "$@" | grepalign
-    return "${PIPESTATUS[0]}"
+icd() {
+    local a
+    read -p "$FUNCNAME> " -ei "${1:-$PWD}" a && cd "$a"
 }
 
 wmem() {
@@ -113,10 +166,10 @@ complete -c cdw
 complete -c faketty
 complete -f "$BROWSER"
 
-compdir=/usr/share/bash-completion/completions
+COMPDIR=/usr/share/bash-completion/completions
 
-. "$compdir/zathura" 2>/dev/null && complete -F _zathura zath
+. "$COMPDIR/zathura" 2>/dev/null && complete -F _zathura zath
 
-unset compdir
+unset COMPDIR
 
 [[ -f ~/.bash_aliases ]] && . ~/.bash_aliases
