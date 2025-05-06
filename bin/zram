@@ -6,7 +6,7 @@ set -eu
 sh_ensure_root
 
 if [ -e /dev/zram0 ]; then
-    printf '%s: /dev/zram0 already exists' "$(sh_prog)"
+    printf '%s: /dev/zram0 already exists\n' "$(sh_prog)"
     exit 1
 fi
 
