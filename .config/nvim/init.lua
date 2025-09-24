@@ -5,6 +5,7 @@ set.fsync = false
 set.lazyredraw = true
 set.mouse = ''
 set.showcmd = false
+set.undofile = true
 
 set.expandtab = true
 set.shiftwidth = 4
@@ -19,10 +20,22 @@ set.ignorecase = true
 set.smartcase = true
 set.wildignorecase = true
 
-set.completeopt = 'menu'
-
 set.path = '**'
 set.grepprg = 'git grep -n'
+
+set.breakindent = true
+set.breakindentopt = 'sbr'
+set.completeopt = {'menu', 'menuone', 'popup'}
+set.cursorlineopt = 'number'
+set.diffopt = {
+    'internal',
+    'filler',
+    'closeoff',
+    'iwhite',
+    'icase',
+    'algorithm:minimal',
+}
+set.formatoptions = set.formatoptions + 'n'
 
 function tfeedkeys(s)
     w = vim.api.nvim_replace_termcodes(s, true, false, true)
@@ -44,6 +57,40 @@ function nm_newline_check_close_bracket_im()
             tfeedkeys(closing[i]..'<c-o>O')
             return
         end
+    end
+end
+
+function nm_jumplist_file(dir)
+    local ret = vim.fn.getjumplist()
+    local jumps = ret[1]
+    local cur = ret[2]
+
+    if #jumps == 0 then
+        return
+    end
+
+    local _end, leaps
+    if dir == 1 then
+        cur = cur + 1
+        _end = #jumps - 1
+        leaps = 0
+    else
+        _end = 2
+        leaps = 1
+    end
+
+    local bufnr = vim.api.nvim_get_current_buf()
+    for i = cur, _end, dir do
+        if bufnr ~= jumps[i].bufnr then
+            break
+        end
+        leaps = leaps + 1
+    end
+
+    if dir == 1 then
+        tfeedkeys(leaps..'<c-i>')
+    else
+        tfeedkeys(leaps..'<c-o>')
     end
 end
 
@@ -82,6 +129,8 @@ vim.keymap.set('n', '<c-m>', '<c-w>2+')
 vim.keymap.set('n', '<c-b>', '<c-w>2-')
 vim.keymap.set('n', '<c-1>', '<cmd>cprev<cr>')
 vim.keymap.set('n', '<c-2>', '<cmd>cnext<cr>')
+vim.keymap.set('n', '<c-9>', function() nm_jumplist_file(-1) end)
+vim.keymap.set('n', '<c-[>', function() nm_jumplist_file(1) end)
 vim.keymap.set('i', '<cr>',
     function()
         local col = vim.api.nvim_win_get_cursor(0)[2]
@@ -208,7 +257,7 @@ function ccolors()
 
     local fg = '#ccd0cc'
     local bg = '#0c1000'
-    local ws = '#182018'
+    local ws = '#282418'
 
     set_hl(0, 'Normal',                {})
 
