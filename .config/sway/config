@@ -10,16 +10,30 @@ primary_selection disable
 set $mod Mod1
 set $tborder 1
 set $fborder 4
-set $cursor_size 16
+set $cursor_size 64
 set $cursor_theme retrosmart-xcursor-white
-set $igap 11
+set $igap 9
 set $ogap -2
 
+#set $sgc #000000
+#set $mgc #182018
+#set $lgc #405040
+#set $qgc #667666
+#set $dxt #9eae9e
+#set $txt #ffffff
+
+#set $sgc #000000
+#set $mgc #282418
+#set $lgc #605840
+#set $qgc #867c66
+#set $dxt #bea49e
+#set $txt #ffffff
+
 set $sgc #000000
-set $mgc #182018
-set $lgc #405040
-set $qgc #667666
-set $dxt #9eae9e
+set $mgc #282418
+set $lgc #504c40
+set $qgc #767266
+set $dxt #aeab9e
 set $txt #ffffff
 
 gaps inner $igap
@@ -114,12 +128,12 @@ bindsym $mod+Shift+minus       move scratchpad
 
 ## == Programs ================================================================
 
-bindsym $mod+Return            exec $TERMINAL
+bindsym $mod+Return            exec systemd-run --scope --slice-inherit --no-block kitty
 bindsym $mod+Shift+e           exec thunar
 bindsym $mod+Shift+t           exec thunderbird
 bindsym $mod+b                 exec $BROWSER
 bindsym $mod+d                 exec fuzzel
-bindsym $mod+t                 exec $TERMINAL
+bindsym $mod+t                 exec systemd-run --scope --slice-inherit --no-block $TERMINAL
 
 ## == Scripts =================================================================
 
@@ -188,8 +202,8 @@ font pango:Terminus 10
 
 # class                 border  bg      text   indicator child_border
 client.focused          $dxt    $lgc    $txt    $txt     $dxt
-client.focused_inactive $lgc    $mgc    $dxt    $lgc     $lgc
-client.unfocused        $sgc    $sgc    $qgc    $sgc     $sgc
+client.focused_inactive $lgc    $mgc    $dxt    $lgc     #668866
+client.unfocused        $sgc    $sgc    $qgc    $sgc     $mgc
 client.urgent           #2f343a #900000 $txt    #900000  #900000
 client.placeholder      #000000 #0c0c0c #ffffff #000000  #0c0c0c
 client.background       $sgc
