@@ -6,7 +6,7 @@ TERM = "xterm-256color"
 
 [colors.primary]
 foreground = "0xccd0cc"
-background = "0x0c1000"
+background = "0x100c00"
 
 [colors.vi_mode_cursor]
 cursor = "0xff6c6b"
@@ -163,6 +163,8 @@ history = 65535
 multiplier = 4
 
 [window]
+padding.x = 6
+padding.y = 6
 dynamic_padding = false
 dynamic_title = true
 opacity = 1.0
