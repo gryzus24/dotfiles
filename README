@@ -142,12 +142,12 @@ Scripts in ~/bin listed alphabetically
     * grim, imagemagick, slurp, wl-copy
 
 - cpu-scaling
-    Print information related to system's CPU frequency scaling and
-    power management policies. Only intel_pstate driver is recognized.
-    If <n> is specified, query current CPU frequency as reported by the
-    kernel - aperf/mperf delta from the last non-idle tick or current
-    minimum frequency if no recent enough tick data was available for
-    ~20ms - every <n> milliseconds.
+    Print information related to system's CPU frequency scaling, power
+    management policies, and cgroup cpusets configuration. If <n> is
+    specified, query current CPU frequency as reported by the kernel
+    (aperf/mperf delta from the last non-idle tick or current minimum
+    frequency if no recent enough tick data was available for ~20ms)
+    every <n> milliseconds.
   Usage
     $ cpu-scaling [<n>]
   Dependencies
