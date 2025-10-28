@@ -1,12 +1,15 @@
 vim.lsp.set_log_level('OFF')
 vim.diagnostic.config({signs = false})
 
-local conf = require('lspconfig')
-conf['clangd'].setup({})
-conf['csharp_ls'].setup({})
-conf['pyright'].setup({})
-conf['ts_ls'].setup({})
-conf['zls'].setup({})
+-- local cfg = vim.lsp.config()
+vim.lsp.enable({'clangd', 'gopls', 'pyright', 'ts_ls', 'zls'})
+
+vim.api.nvim_create_autocmd('BufWritePre',{
+  pattern = {"*.zig", "*.zon"},
+  callback = function(ev)
+    vim.lsp.buf.format()
+  end
+})
 
 vim.keymap.set('n', '<space>e', vim.diagnostic.open_float)
 vim.keymap.set('n', '[d', function()
