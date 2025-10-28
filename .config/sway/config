@@ -9,11 +9,11 @@ primary_selection disable
 
 set $mod Mod1
 set $tborder 1
-set $fborder 4
-set $cursor_size 64
+set $fborder 5
+set $cursor_size 16
 set $cursor_theme retrosmart-xcursor-white
-set $igap 9
-set $ogap -2
+set $igap 10
+set $ogap -10
 
 #set $sgc #000000
 #set $mgc #182018
@@ -48,7 +48,7 @@ floating_modifier $mod
 floating_maximum_size -1 x -1
 
 seat * {
-  hide_cursor when-typing yes
+  hide_cursor when-typing no
   xcursor_theme $cursor_theme $cursor_size
 }
 
@@ -212,7 +212,7 @@ bar {
   status_command ziew c "$HOME/.config/ziew/$_PLATFORM.config"
   modifier none
   tray_padding 0
-  separator_symbol "  "
+  separator_symbol " | "
   colors {
     background $sgc
     statusline $txt
@@ -229,6 +229,7 @@ bar {
 # == Startup ==================================================================
 
 exec gsettings set org.gnome.desktop.interface cursor-size $cursor_size
+exec gsettings set org.gnome.desktop.interface color-scheme prefer-dark
 
 exec wl-paste --watch cliphist store
 exec swayidle -w \
