@@ -174,16 +174,18 @@ def write_cgroup_cpuset() -> None:
     files = os.listdir(CGROUP_PATH)
 
     rows: list[list[str]] = []
-    rows_header = ['CGROUP', 'CPUS', 'EFFECTIVE']
+    rows_header = ['CGROUP', 'WEIGHT', 'NICE', 'CPUS', 'EFFECTIVE']
     rows_align = [len(x) for x in rows_header]
 
     for file in files:
         this_cgroup = f'{CGROUP_PATH}/{file}'
         if os.path.isdir(this_cgroup):
-            cpus        = read_file(this_cgroup + '/cpuset.cpus')
-            effective   = read_file(this_cgroup + '/cpuset.cpus.effective')
+            weight    = read_file(this_cgroup + '/cpu.weight')
+            nice      = read_file(this_cgroup + '/cpu.weight.nice')
+            cpus      = read_file(this_cgroup + '/cpuset.cpus')
+            effective = read_file(this_cgroup + '/cpuset.cpus.effective')
 
-            row = [file, cpus, effective]
+            row = [file, weight, nice, cpus, effective]
             for i, x in enumerate(row):
                 rows_align[i] = max(rows_align[i], len(x))
             rows.append(row)
@@ -194,8 +196,9 @@ def write_cgroup_cpuset() -> None:
     o = sys.stdout
     o.write(title + '\n')
     o.write(header + '\n')
-    for cgroup, cpus, effective in rows:
-        row = align_fields([cgroup, cpus, effective], rows_align, SEP)
+    for cgroup, weight, nice, cpus, effective in rows:
+        row = align_fields(
+            [cgroup, weight, nice, cpus, effective], rows_align, SEP)
         if cgroup.endswith('.mount'):
             row = gray(row)
         o.write(row + '\n')
