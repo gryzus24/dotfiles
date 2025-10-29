@@ -165,7 +165,7 @@ def write_acpi_profiles() -> None:
 
     o = sys.stdout
     o.write(title + '\n')
-    o.write(f'ACPI PROFILES = {profiles.items_unique_marked()}\n')
+    o.write(f'PROFILES = {profiles.items_unique_marked()}\n')
 
 def write_cgroup_cpuset() -> None:
     if not os.path.exists(CGROUP_PATH):
