@@ -21,7 +21,7 @@ set.smartcase = true
 set.wildignorecase = true
 
 set.path = '**'
-set.grepprg = 'git grep -n'
+set.grepprg = 'git grep -n --column'
 
 set.breakindent = true
 set.breakindentopt = 'sbr'
