@@ -203,7 +203,7 @@ def write_cgroup_cpuset() -> None:
             row = gray(row)
         o.write(row + '\n')
 
-def monitor_cpu_freq(nr_cpus: int, interval_ms: int, tsc_mhz: int) -> None:
+def monitor_cpu_freq(nr_cpus: int, interval_ms: int, fallback_mhz: int) -> None:
     cpu_fds = []
 
     o = sys.stdout
@@ -225,7 +225,7 @@ def monitor_cpu_freq(nr_cpus: int, interval_ms: int, tsc_mhz: int) -> None:
                 freq_max = mhz
             elif mhz < freq_min:
                 freq_min = mhz
-            elif mhz == tsc_mhz:
+            elif mhz == fallback_mhz:
                 s += '.       '
                 continue
             s += f'{mhz:<8}'
@@ -235,15 +235,39 @@ def monitor_cpu_freq(nr_cpus: int, interval_ms: int, tsc_mhz: int) -> None:
 
 def usage() -> int:
     o = sys.stdout
-    o.write(f'usage: {os.path.basename(sys.argv[0])} [<interval_ms>]\n')
+    o.write(
+        f'usage: {os.path.basename(sys.argv[0])} [[--fallback-mhz=800] <interval_ms>]\n'
+        '  --fallback-mhz    After the CPU is idle for 20ms the kernel decides against\n'
+        '                    sending an IPI to query current CPU frequency and instead\n'
+        '                    retrieves a cpufreq driver-dependent per-CPU policy value\n'
+        '                    as fallback. This is a good indication the CPU is idling.\n'
+        '                    Set this option to the apparent fallback value -- usually\n'
+        '                    the lowest P-State frequency -- to visually differentiate\n'
+        '                    potential fallback values from actual frequency readouts.\n'
+    )
     return 2
 
 def main() -> int:
     interval_ms = 0
+    fallback_mhz = 800
     if len(sys.argv) > 1:
+        get_fallback_mhz = False
         for arg in sys.argv[1:]:
+            arg, _, value = arg.partition('=')
+            if get_fallback_mhz:
+                get_fallback_mhz = False
+                if arg.isdecimal():
+                    fallback_mhz = int(arg)
+                    continue
+                return usage()
+
             if arg == '-h' or arg == '--help':
                 return usage()
+            elif arg == '--fallback-mhz':
+                if value.isdecimal():
+                    fallback_mhz = int(value)
+                else:
+                    get_fallback_mhz = True
             elif arg.isdecimal():
                 if not interval_ms:
                     interval_ms = int(arg)
@@ -255,7 +279,7 @@ def main() -> int:
     write_acpi_profiles()
     write_cgroup_cpuset()
     if interval_ms:
-        monitor_cpu_freq(nr_cpus, interval_ms, 800)
+        monitor_cpu_freq(nr_cpus, interval_ms, fallback_mhz)
 
     return 0
 
