@@ -75,11 +75,13 @@ ps1_normal() {
 # Override PROMPT_COMMAND from /etc/bash.bashrc.
 unset PROMPT_COMMAND
 PROMPT_COMMAND=prompt_cmd
-ps1_simple
+ps1_normal
 
 stty -ixon
 bind -x '"\C-l":clear -x'
 bind '"\C-e":shell-expand-line'
+
+#set -o noclobber
 
 shopt -s cdspell     # autocorrects cd misspellings
 shopt -s cmdhist     # save multi-line commands in history as single line
@@ -111,6 +113,7 @@ alias ls='ls --color=auto --time-style=long-iso -N'
 alias l='ls -lh'
 alias la='ls -A'
 alias mv='mv -n'
+alias disassemble='objdump -d --no-show-raw-insn --no-addresses'
 
 # ffmpeg
 alias ffmpeg='ffmpeg -hide_banner'
