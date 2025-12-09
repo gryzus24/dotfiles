@@ -145,11 +145,11 @@ Scripts in ~/bin listed alphabetically
     Print information related to system's CPU frequency scaling, power
     management policies, and cgroup cpusets configuration. If <n> is
     specified, query current CPU frequency as reported by the kernel
-    (aperf/mperf delta from the last non-idle tick or current minimum
-    frequency if no recent enough tick data was available for ~20ms)
-    every <n> milliseconds.
+    (aperf/mperf delta from the last non-idle tick or a "fallback
+    frequency" - see the --help text for more information - if no recent
+    enough tick data was available for ~20ms) every <n> milliseconds.
   Usage
-    $ cpu-scaling [<n>]
+    $ cpu-scaling [[--fallback-mhz=800] <n>]
   Dependencies
     * python (3.8+)
 
