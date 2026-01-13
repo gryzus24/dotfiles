@@ -152,8 +152,7 @@ bindsym XF86TouchpadToggle     exec --no-startup-id touchpad-toggle
 
 bindsym Print                  exec --no-startup-id grim -l 9
 bindsym Shift+Print            exec --no-startup-id grim -l 9 -g "$(slurp)"
-bindsym Control+Shift+Print    exec --no-startup-id sway-prop window_rect \
-                                    | grim -l 9 -g -
+bindsym Control+Shift+Print    exec --no-startup-id grim -l 9 -g "$(sway-prop rect)"
 
 ## == Workspaces ==============================================================
 
@@ -215,7 +214,7 @@ bar {
   separator_symbol " | "
   colors {
     background $sgc
-    statusline $txt
+    statusline $dxt
     separator $lgc
     #                  border  bg      text
     focused_workspace  $sgc    $lgc    $txt
