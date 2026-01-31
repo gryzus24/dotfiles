@@ -7,9 +7,6 @@ import time
 def bold(s: str) -> str:
     return '\033[37;1m' + s + '\033[m'  #]]
 
-def gray(s: str) -> str:
-    return '\033[90m' + s + '\033[m'  #]]
-
 def green(s: str) -> str:
     return '\033[32m' + s + '\033[m'  #]]
 
@@ -178,6 +175,7 @@ def write_cgroup_cpuset() -> None:
     rows_align = [len(x) for x in rows_header]
 
     for file in files:
+        if file.endswith('.mount'): continue
         this_cgroup = f'{CGROUP_PATH}/{file}'
         if os.path.isdir(this_cgroup):
             weight    = read_file(this_cgroup + '/cpu.weight')
@@ -199,38 +197,56 @@ def write_cgroup_cpuset() -> None:
     for cgroup, weight, nice, cpus, effective in rows:
         row = align_fields(
             [cgroup, weight, nice, cpus, effective], rows_align, SEP)
-        if cgroup.endswith('.mount'):
-            row = gray(row)
         o.write(row + '\n')
 
-def monitor_cpu_freq(nr_cpus: int, interval_ms: int, fallback_mhz: int) -> None:
-    cpu_fds = []
-
+def monitor_cpu_freq(
+        nr_cpus: int,
+        interval_ms: int,
+        fallback_mhz: int,
+        avg_win_size: int
+) -> None:
+    assert avg_win_size > 0 and avg_win_size & (avg_win_size - 1) == 0
     o = sys.stdout
+
+    cpu_fds = []
     for i in range(nr_cpus):
         path = f'{CPU_PATH}/cpu{i}/cpufreq/scaling_cur_freq'
         cpu_fds.append(os.open(path, os.O_RDONLY))
-        o.write(f'CPU{i:<5}')
+        o.write(f'{"CPU" + str(i):6}')
+    for e in 'AVG' + str(avg_win_size), 'MIN', 'MAX':
+        o.write(f'{e:6}')
     o.write('\n')
 
     interval_sec = interval_ms / 1000
     freq_min = 1000 * 1000
     freq_max = 0
 
+    avg_win_mask = avg_win_size - 1
+    avg_win = [0] * avg_win_size
+    i = 0
+
     while True:
         s = ''
+        t = 0
         for f in [read_fd(fd) for fd in cpu_fds]:
             mhz = int(f) // 1000
-            if mhz > freq_max:
-                freq_max = mhz
-            elif mhz < freq_min:
-                freq_min = mhz
-            elif mhz == fallback_mhz:
-                s += '.       '
-                continue
-            s += f'{mhz:<8}'
+            if   mhz < freq_min: freq_min = mhz
+            elif mhz > freq_max: freq_max = mhz
+            if mhz == fallback_mhz:
+                s += '.     '
+            else:
+                s += f'{mhz:<6}'
+            t += mhz
 
-        o.write(f'{s}>{freq_min:<4} <{freq_max:<4}\n')
+        avg_win[i] = t // nr_cpus
+        i = (i + 1) & avg_win_mask
+
+        tw = 0
+        for j in range(avg_win_size):
+            tw += avg_win[(i + j) & avg_win_mask] << j
+        freq_avg = tw // ((1 << avg_win_size) - 1)
+
+        o.write(f'{s}~{freq_avg:<4} >{freq_min:<4} <{freq_max:<4}\n')
         time.sleep(interval_sec)
 
 def usage() -> int:
@@ -279,7 +295,7 @@ def main() -> int:
     write_acpi_profiles()
     write_cgroup_cpuset()
     if interval_ms:
-        monitor_cpu_freq(nr_cpus, interval_ms, fallback_mhz)
+        monitor_cpu_freq(nr_cpus, interval_ms, fallback_mhz, 8)
 
     return 0
 
