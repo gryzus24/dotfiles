@@ -1,16 +1,22 @@
 #!/bin/dash
 
-PYSTRIP='
-import sys
-sys.stdout.write(" ".join("".join(sys.stdin).split()))
-'
-
-if [ -n "$WAYLAND_DISPLAY" ]; then
+# $WAYLAND_DISPLAY might be empty even on Wayland if we are running in a clean
+# systemd scope for example. Don't be overhasty with assuming X11 and check for
+# $XDG_CURRENT_DESKTOP which is more likely to be imported into systemd's
+# environment. Unlike xclip, wl-copy will at least scream if $WAYLAND_DISPLAY
+# is missing.
+if [ -n "$WAYLAND_DISPLAY" -o "$XDG_CURRENT_DESKTOP" = sway ]; then
     CLIP_CMD='wl-copy'
 else
     CLIP_CMD='xclip -sel clip'
 fi
 
-fzf --exact --no-sort < "$HOME/.bash_history" \
-    | python3 -Sc "$PYSTRIP" \
-    | $CLIP_CMD
+PYSTRIP='
+import sys
+sys.stdout.write(" ".join("".join(sys.stdin).split()))
+'
+SELECTION="$(
+    fzf --exact --no-sort < "$HOME/.bash_history" \
+    | python3 -Sc "$PYSTRIP"
+)"
+printf '%s' "$SELECTION" | $CLIP_CMD
