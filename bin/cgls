@@ -1,0 +1,107 @@
+#!/usr/bin/python3 -S
+
+import os
+import sys
+
+def bold(s: str) -> str:
+    return '\033[37;1m' + s + '\033[m'  #]]
+
+def read_fd(fd: int) -> str:
+    return os.pread(fd, 1 << 20, 0).strip().decode()
+
+def read_file(path: str, default: str) -> str:
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except FileNotFoundError:
+        return default
+    try:
+        return read_fd(fd)
+    finally:
+        os.close(fd)
+
+def align_fields(fields: list[str], align: list[int], sep: str) -> str:
+    return sep.join([f'{x:{a}}' for x, a in zip(fields, align)])
+
+# =============================================================================
+
+OUT = sys.stdout
+
+SEP          = '  '
+CGROUP_PATH  = '/sys/fs/cgroup'
+
+def main() -> int:
+    if not os.path.exists(CGROUP_PATH):
+        prog = os.path.basename(sys.argv[0])
+        sys.stderr.write(f'{prog}: /sys/fs/cgroup: No such file or directory\n')
+        return 1
+
+    rows: list[list[str]] = []
+    rows_depth: list[int] = []
+    rows_header = ['CGROUP', 'NR_PROCS', 'WEIGHT', 'NICE', 'CPUS', 'EFFECTIVE']
+    rows_align = [len(x) for x in rows_header]
+
+    ctrls = ('cgroup.', 'cpuset.', 'cpu.', 'memory.', 'pids.', 'io.')
+
+    anchois = []
+    queue = [(-1, CGROUP_PATH)]
+
+    while queue:
+        depth, path = queue.pop()
+
+        for b in os.listdir(path):
+            if b.startswith(ctrls): continue
+            if b.endswith('.mount'): continue
+            p = f'{path}/{b}'
+            if os.path.isdir(p):
+                anchois.append((depth + 1, p))
+
+        if anchois:
+            anchovy = anchois.pop()
+            queue.append(anchovy)
+            depth, path = anchovy
+
+            procs     = read_file(path + '/cgroup.procs', '')
+            weight    = read_file(path + '/cpu.weight', '.')
+            nice      = read_file(path + '/cpu.weight.nice', '.')
+            cpus      = read_file(path + '/cpuset.cpus', '.')
+            effective = read_file(path + '/cpuset.cpus.effective', '.')
+
+            cg = os.path.basename(path).removesuffix('.service')
+
+            row = [cg, '', weight, nice, cpus, effective]
+            sep = depth * len(SEP)
+            for i, x in enumerate(row):
+                rows_align[i] = max(rows_align[i], len(x) + (i == 0) * sep)
+            row[1] = procs
+
+            rows.append(row)
+            rows_depth.append(depth)
+
+    rows_align_bold = rows_align.copy()
+    rows_align_bold[0] += len(bold(''))
+
+    OUT.write(align_fields(rows_header, rows_align, SEP) + '\n')
+    for i, (cg, procs, weight, nice, cpus, effective) in enumerate(rows):
+        nr_procs = (not not procs) + procs.count('\n')
+        if not nr_procs:
+            if i + 1 >= len(rows_depth):
+                continue
+            if rows_depth[i] >= rows_depth[i + 1]:
+                continue
+
+        name = rows_depth[i] * '  ' + cg
+        if (slice := cg.endswith('.slice')):
+            name = bold(name)
+
+        row = align_fields(
+            [name, str(nr_procs) if nr_procs else '.', weight, nice, cpus, effective],
+            rows_align_bold if slice else rows_align, SEP)
+        OUT.write(row + '\n')
+
+    return 0
+
+if __name__ == '__main__':
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        OUT.write('\n')
