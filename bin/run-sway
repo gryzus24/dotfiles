@@ -8,6 +8,7 @@
 #export WLR_NO_HARDWARE_CURSORS=1
 #export WLR_RENDERER=vulkan
 #export WLR_RENDER_NO_EXPLICIT_SYNC=1
+#export SWAY_UNSUPPORTED_GPU=1
 export XDG_CURRENT_DESKTOP=sway
 
 exec sway >/tmp/swaylog 2>&1
