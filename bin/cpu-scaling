@@ -26,6 +26,23 @@ def read_file(path: str) -> str:
 def align_fields(fields: list[str], align: list[int], sep: str) -> str:
     return sep.join([f'{x:{a}}' for x, a in zip(fields, align)])
 
+def wrap_deduct_green(words: list[str], width: int) -> list[str]:
+    line: list[str] = []
+    line_w = 0
+    lines: list[str] = []
+    for word in words:
+        w = len(word)
+        if '\033' in word:
+            w -= len(green(''))
+        if line_w + w > width:
+            lines.append(' '.join(line))
+            line = []; line_w = 0
+        line.append(word)
+        line_w += w + 1
+
+    lines.append(' '.join(line))
+    return lines
+
 class Bundle:
     __slots__ = ('items', 'seen')
     def __init__(self) -> None:
@@ -42,12 +59,13 @@ class Bundle:
 
 # =============================================================================
 
+OUT = sys.stdout
+
 TITLE_INDENT = 2
 SEP          = '  '
 CPU_PATH     = '/sys/devices/system/cpu'
 CPU_INTEL_PSTATE_PATH = CPU_PATH + '/intel_pstate'
 ACPI_PATH    = '/sys/firmware/acpi'
-CGROUP_PATH  = '/sys/fs/cgroup'
 
 def make_title(s: str) -> str:
     return bold(f'{TITLE_INDENT * "="}> {s}')
@@ -77,10 +95,9 @@ def write_cpu_intel_pstate() -> None:
     header = align_fields(intel_header, intel_align, SEP)
     row    = align_fields(intel, intel_align, SEP)
 
-    o = sys.stdout
-    o.write(title + '\n')
-    o.write(header + '\n')
-    o.write(row + '\n')
+    OUT.write(title + '\n')
+    OUT.write(header + '\n')
+    OUT.write(row + '\n')
 
 def write_cpu_generic(nr_cpus: int) -> None:
     governors = Bundle()
@@ -122,34 +139,21 @@ def write_cpu_generic(nr_cpus: int) -> None:
     header = align_fields(rows_header, rows_align, SEP)
     width  = len(header)
 
-    o = sys.stdout
-    o.write(title + '\n')
-    o.write(header + '\n')
+    OUT.write(title + '\n')
+    OUT.write(header + '\n')
     for r in rows:
-        o.write(align_fields(r, rows_align, SEP) + '\n')
-    o.write('\n')
+        OUT.write(align_fields(r, rows_align, SEP) + '\n')
+    OUT.write('\n')
 
-    extra_indent = 9
-    line: list[str] = []
-    line_w = 0
-    lines: list[str] = []
-    for item in epps.items_unique_marked().split():
-        w = len(item)
-        if '\033' in item:
-            w -= len(green(''))
-        if line_w + w > width - extra_indent - 3:
-            lines.append(' '.join(line))
-            line = [item]
-            line_w = 0
-        else:
-            line.append(item)
-        line_w += w + 1
-    lines.append(' '.join(line))
+    indent = 9
+    OUT.write(f'{"GOVERNORS":{indent}} = {governors.items_unique_marked()}\n')
+    OUT.write(f'{"EPPS":{indent}} = ')
 
-    o.write(f'{"GOVERNORS":{extra_indent}} = {governors.items_unique_marked()}\n')
-    o.write(f'{"EPPS":{extra_indent}} = ')
-    for i, l in enumerate(lines):
-        o.write((i * (extra_indent + 3)) * ' ' + l + '\n')
+    indent_str = (indent + 3) * ' '
+    epp_lines = wrap_deduct_green(
+        epps.items_unique_marked().split(), width - len(indent_str))
+    for i, l in enumerate(epp_lines):
+        OUT.write((i > 0) * indent_str + l + '\n')
 
 def write_acpi_profiles() -> None:
     if not os.path.exists(ACPI_PATH):
@@ -160,44 +164,8 @@ def write_acpi_profiles() -> None:
     profiles.seen.add(read_file(ACPI_PATH + '/platform_profile'))
     title = make_title(ACPI_PATH)
 
-    o = sys.stdout
-    o.write(title + '\n')
-    o.write(f'PROFILES = {profiles.items_unique_marked()}\n')
-
-def write_cgroup_cpuset() -> None:
-    if not os.path.exists(CGROUP_PATH):
-        return
-
-    files = os.listdir(CGROUP_PATH)
-
-    rows: list[list[str]] = []
-    rows_header = ['CGROUP', 'WEIGHT', 'NICE', 'CPUS', 'EFFECTIVE']
-    rows_align = [len(x) for x in rows_header]
-
-    for file in files:
-        if file.endswith('.mount'): continue
-        this_cgroup = f'{CGROUP_PATH}/{file}'
-        if os.path.isdir(this_cgroup):
-            weight    = read_file(this_cgroup + '/cpu.weight')
-            nice      = read_file(this_cgroup + '/cpu.weight.nice')
-            cpus      = read_file(this_cgroup + '/cpuset.cpus')
-            effective = read_file(this_cgroup + '/cpuset.cpus.effective')
-
-            row = [file, weight, nice, cpus, effective]
-            for i, x in enumerate(row):
-                rows_align[i] = max(rows_align[i], len(x))
-            rows.append(row)
-
-    title  = make_title(CGROUP_PATH)
-    header = align_fields(rows_header, rows_align, SEP)
-
-    o = sys.stdout
-    o.write(title + '\n')
-    o.write(header + '\n')
-    for cgroup, weight, nice, cpus, effective in rows:
-        row = align_fields(
-            [cgroup, weight, nice, cpus, effective], rows_align, SEP)
-        o.write(row + '\n')
+    OUT.write(title + '\n')
+    OUT.write(f'PROFILES = {profiles.items_unique_marked()}\n')
 
 def monitor_cpu_freq(
         nr_cpus: int,
@@ -206,16 +174,15 @@ def monitor_cpu_freq(
         avg_win_size: int
 ) -> None:
     assert avg_win_size > 0 and avg_win_size & (avg_win_size - 1) == 0
-    o = sys.stdout
 
     cpu_fds = []
     for i in range(nr_cpus):
         path = f'{CPU_PATH}/cpu{i}/cpufreq/scaling_cur_freq'
         cpu_fds.append(os.open(path, os.O_RDONLY))
-        o.write(f'{"CPU" + str(i):6}')
+        OUT.write(f'{"CPU" + str(i):6}')
     for e in 'AVG' + str(avg_win_size), 'MIN', 'MAX':
-        o.write(f'{e:6}')
-    o.write('\n')
+        OUT.write(f'{e:6}')
+    OUT.write('\n')
 
     interval_sec = interval_ms / 1000
     freq_min = 1000 * 1000
@@ -246,12 +213,11 @@ def monitor_cpu_freq(
             tw += avg_win[(i + j) & avg_win_mask] << j
         freq_avg = tw // ((1 << avg_win_size) - 1)
 
-        o.write(f'{s}~{freq_avg:<4} >{freq_min:<4} <{freq_max:<4}\n')
+        OUT.write(f'{s}~{freq_avg:<4} >{freq_min:<4} <{freq_max:<4}\n')
         time.sleep(interval_sec)
 
 def usage() -> int:
-    o = sys.stdout
-    o.write(
+    OUT.write(
         f'usage: {os.path.basename(sys.argv[0])} [[--fallback-mhz=800] <interval_ms>]\n'
         '  --fallback-mhz    After the CPU is idle for 20ms the kernel decides against\n'
         '                    sending an IPI to query current CPU frequency and instead\n'
@@ -293,7 +259,6 @@ def main() -> int:
     write_cpu_intel_pstate()
     write_cpu_generic(nr_cpus)
     write_acpi_profiles()
-    write_cgroup_cpuset()
     if interval_ms:
         monitor_cpu_freq(nr_cpus, interval_ms, fallback_mhz, 8)
 
@@ -303,4 +268,4 @@ if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except KeyboardInterrupt:
-        sys.stdout.write('\n')
+        OUT.write('\n')
