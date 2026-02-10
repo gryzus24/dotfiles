@@ -1,0 +1,334 @@
+#!/usr/bin/python3 -S
+from __future__ import annotations
+
+import curses
+import os
+import sys
+import time
+
+# This program is split into the 'Implementation' part, and
+# the 'Logic' part. I'm not exactly sure why, but I like it.
+
+class Cpus:
+    __slots__ = ('active', 'mask')
+    def __init__(self, cpuXs: list[str]) -> None:
+        self.active = len(cpuXs)
+        m = 0
+        for cpuX in cpuXs:
+            m |= 1 << int(cpuX[3:])
+        self.mask = m
+
+class Irq:
+    __slots__ = ('nr', 'cpus', 'desc', 'aff', 'eff')
+    def __init__(self, nr: str, cpus: list[int], desc: str, eff: int) -> None:
+        self.nr = nr
+        self.cpus = cpus
+        self.desc = desc
+        self.eff = eff
+
+class IrqStat:
+    WINSZ = 5
+    __slots__ = ('window', 'seen')
+    def __init__(self) -> None:
+        self.window = [0] * IrqStat.WINSZ
+        self.seen = False
+
+    def add(self, n: int) -> None:
+        for i in range(1, IrqStat.WINSZ):
+            self.window[i - 1] = self.window[i] >> 1
+        self.window[IrqStat.WINSZ - 1] = n << (IrqStat.WINSZ - 1)
+
+    def avg(self) -> int:
+        return sum(self.window) // ((1 << IrqStat.WINSZ) - 1)
+
+def open_nofail(path: str) -> int:
+    try:                      return os.open(path, 0)
+    except FileNotFoundError: return -1
+
+def read_file(fd: int) -> str:
+    return os.pread(fd, 1 << 20, 0).decode()
+def iter_split_on_whitespace(s: str):
+    return (x.split() for x in s.splitlines())
+
+def irq_nr(p: list[str]) -> str:
+    return p[0][:-1]
+def irq_cpus(p: list[str], cpus: Cpus) -> list[int]:
+    r = [int(x) for x in p[1:1 + cpus.active]]
+    if len(r) == 1:
+        r += [0] * (cpus.active - 1)
+    return r
+def irq_desc(p: list[str], cpus: Cpus) -> str:
+    return ' '.join(p[1 + cpus.active:])
+
+def irq_dtoa(d: int) -> str:
+    if not d:       return ''
+    if d < 1_000:   return str(d)
+    if d < 10_000:  return f'{d // 1000}k{d // 10 % 100:02}'
+    if d < 100_000: return f'{d // 1000}k{d // 100 % 10}'
+    else:           return f'{d // 1000}k'
+def filter_irqs(irqs_curr: list[Irq], filtr: str = '') -> list[int]:
+    if filtr:
+        filtr = filtr.lower()
+        return [
+            i for i, irq in enumerate(irqs_curr)
+            if filtr in irq.desc.lower()
+        ]
+    else:
+        return list(range(len(irqs_curr)))
+
+def draw_tail(win: curses.window, y: int, cumulative: list[int], *, more: bool) -> None:
+    if more:
+        hint = '[ MORE j k ]=[ FILTER / ]'
+    else:
+        hint = '[ j k ]=[ FILTER / ]'
+    y = min(y, curses.LINES - 2)
+    s_cpus_cumulative = ' '.join([f'{irq_dtoa(x):>4}' for x in cumulative[:-1]])
+    try:
+        win.hline(y, 0, '=', curses.COLS)
+        win.addstr(y, curses.COLS - len(hint) - 1, hint)
+        win.addstr(
+            y + 1, 1,
+            f'SUM {irq_dtoa(cumulative[-1]):>4} | {s_cpus_cumulative}',
+            curses.A_BOLD
+        )
+    except curses.error:
+        pass
+
+def draw(
+        win: curses.window,
+        scroll: int,
+        cpus: Cpus,
+        irqs_curr: list[Irq],
+        irqs_prev: list[Irq],
+        stats: dict[str, IrqStat],
+        *,
+        update_stats: bool,
+        filtr: str = '',
+) -> int:
+    cpu_column_offset = []
+
+    head = []
+    i = 0; mask = cpus.mask
+    while mask:
+        cpu_column_offset.append(len(head) * 5)
+        if mask & 1:
+            head.append(f'{i:4}')
+        i += 1; mask >>= 1
+
+    s_head = 'CPU  ' + ' '.join(head)[3:]
+    try:
+        win.addstr(0, 0, f' IRQ AVG{IrqStat.WINSZ} {s_head} DESCRIPTION', curses.A_BOLD)
+    except curses.error:
+        pass
+
+    y = 1
+    cumulative = [0] * (cpus.active + 1)
+    irqs = filter_irqs(irqs_curr, filtr)
+    for i in irqs[scroll:scroll + curses.LINES - 2]:
+        curr = irqs_curr[i]
+        prev = irqs_prev[i]
+
+        stat = stats.setdefault(curr.nr, IrqStat())
+
+        total = 0
+        per_cpu_counts: list[str] = []
+        for j in range(cpus.active):
+            d = curr.cpus[j] - prev.cpus[j]
+            total += d
+            per_cpu_counts.append(f'{irq_dtoa(d):>4}')
+            cumulative[j] += d
+        cumulative[-1] += total
+
+        if update_stats:
+            stat.add(total)
+            if total:
+                stat.seen = True
+
+        s_per_cpu_counts = ' '.join(per_cpu_counts)
+        try:
+            win.addstr(y, 0,
+                f'{"*" if stat.seen else " "}'
+                f'{curr.nr:3} '
+                f'{irq_dtoa(stat.avg()):>4} | '
+                f'{s_per_cpu_counts} ')
+            win.addstr(curr.desc, bool(total) * curses.A_BOLD)
+            if not total:
+                mask = curr.eff
+                while mask:
+                    bit = mask & (~mask + 1)
+                    cpuX = bit.bit_length() - 1  # tzcnt
+                    mask ^= bit
+                    win.addstr(y, cpu_column_offset[cpuX] + 11 + 4, '-')
+        except curses.error:
+            pass
+        else:
+            y += 1
+
+    draw_tail(win, y, cumulative, more=y > curses.LINES - 2)
+    return len(irqs)
+
+def filtring_toggle(enable: bool) -> bool:
+    enable = not enable
+    curses.curs_set(enable)
+    return enable
+
+def filtr_push(filtr: str, char: str) -> tuple[str, int]:
+    return filtr + char, 0
+def filtr_pop(filtr: str) -> tuple[str, int]:
+    return filtr[:-1], 0
+def filtr_clear() -> tuple[str, int]:
+    return '', 0
+
+key_up                   = lambda k: k in {b'k', b'K', b'KEY_UP'}
+key_down                 = lambda k: k in {b'j', b'J', b'KEY_DOWN'}
+key_page_up              = lambda k: k in {b'KEY_PPAGE'}
+key_page_down            = lambda k: k in {b'KEY_NPAGE', b' '}
+key_top                  = lambda k: k in {b'g', b'KEY_HOME'}
+key_bottom               = lambda k: k in {b'G', b'KEY_END'}
+key_backspace            = lambda k: k in {b'^H', b'KEY_BACKSPACE'}
+key_exit                 = lambda k: k in {b'q', b'Q', b'^X'}
+key_filtr_prompt_toggle  = lambda k: k in {b'/', b'KEY_F(4)'}
+key_filtr_prompt_disable = lambda k: k in {b'^[', b'^J', b'^M'}  #]
+key_filtr_prompt_clear   = lambda k: k in {b'^W'}
+
+def c_main(win: curses.window) -> int:
+    try:
+        delay_ds = int(float(sys.argv[1]) * 10)
+    except (IndexError, ValueError):
+        delay_ds = 10
+    else:
+        delay_ds = min(max(delay_ds, 1), 255)
+
+    ns_in_ds = 1000 * 1000 * 100
+    delay_ns = delay_ds * ns_in_ds
+
+    curses.halfdelay(delay_ds)
+    win.keypad(True)
+
+    proc_intr_fd = os.open('/proc/interrupts', 0)
+
+    refresh = filtring = False
+    refresh_last = nr_potentially_drawable = 0
+    filtr, scroll = filtr_clear()
+
+    cpus = Cpus([])
+    irqs_prev: list[Irq] = []
+    irqs_curr: list[Irq] = []
+    stats: dict[str, IrqStat] = {}
+
+    while True:
+        now = time.monotonic_ns()
+        if now - refresh_last >= delay_ns:
+            refresh = True
+
+        if refresh:
+            refresh_last = now
+
+            irqs_prev = irqs_curr
+            irqs_curr = []
+            cpus_prev = cpus
+
+            file = read_file(proc_intr_fd)
+            rows = iter_split_on_whitespace(file)
+            cpus = Cpus(next(rows))
+
+            fd_lo = fd_hi = proc_intr_fd + 1
+            for x in rows:
+                nr = irq_nr(x)
+
+                eff_fd = -1
+                if nr.isdecimal():
+                    eff_fd = open_nofail(f'/proc/irq/{nr}/effective_affinity')
+
+                eff = 0
+                if eff_fd != -1:
+                    eff = int(os.read(eff_fd, 4096), 16)
+                    fd_hi = eff_fd
+
+                irqs_curr.append(
+                    Irq(nr, irq_cpus(x, cpus), irq_desc(x, cpus), eff))
+
+            if fd_lo <= fd_hi:
+                # While the `close_range` syscall has inclusive semantics,
+                # Python's `os.closerange` was introduced before the syscall
+                # and has insane exclusive semantics...
+                os.closerange(fd_lo, fd_hi + 1)
+
+            assumptions_changed = (
+                cpus.active != cpus_prev.active or
+                len(irqs_curr) != len(irqs_prev)
+            )
+            if assumptions_changed:
+                irqs_prev = irqs_curr
+
+        win.erase()
+        nr_potentially_drawable = draw(
+            win, scroll, cpus, irqs_curr, irqs_prev, stats,
+            update_stats=refresh, filtr=filtr
+        )
+        if filtring:
+            try:
+                win.hline(curses.LINES - 1, 0, ' ', curses.COLS)
+                win.addstr(curses.LINES - 1, 0, 'Filter: ' + filtr)
+            except curses.error:
+                pass
+
+        c = win.getch()
+        refresh = c == -1
+        if not refresh:
+            if c == curses.KEY_RESIZE:
+                curses.update_lines_cols()
+
+            key = curses.keyname(c)
+            if key_filtr_prompt_toggle(key):
+                filtring = filtring_toggle(filtring)
+            elif key_filtr_prompt_disable(key):
+                filtring = filtring_toggle(True)
+            elif key_filtr_prompt_clear(key):
+                if filtr:
+                    filtr, scroll = filtr_clear()
+                else:
+                    filtring = filtring_toggle(True)
+            elif filtring:
+                if key_backspace(key) :
+                    if filtr:
+                        filtr, scroll = filtr_pop(filtr)
+                    else:
+                        filtring = filtring_toggle(True)
+                elif len(key) == 1 and 32 <= ord(key) <= 127:
+                    filtr, scroll = filtr_push(filtr, key.decode())
+            elif key_up(key):
+                scroll -= scroll > 0
+            elif key_down(key):
+                scroll += scroll < nr_potentially_drawable - 1
+            elif key_page_up(key):
+                scroll -= curses.LINES - 1
+                if scroll < 0:
+                    scroll = 0
+            elif key_page_down(key):
+                scroll += curses.LINES - 1
+                if scroll > nr_potentially_drawable - 1:
+                    scroll = nr_potentially_drawable - 1
+            elif key_top(key) :
+                scroll = 0
+            elif key_bottom(key):
+                scroll = nr_potentially_drawable - 1
+            elif key_exit(key):
+                return 0
+
+def main() -> int:
+    os.environ.setdefault('ESCDELAY', '0')
+    win = curses.initscr()
+    try:
+        curses.cbreak()
+        curses.noecho()
+        curses.curs_set(0)
+        return c_main(win)
+    finally:
+        curses.endwin()
+
+if __name__ == '__main__':
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        pass
