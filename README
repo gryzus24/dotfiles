@@ -42,10 +42,7 @@ Scripts in ~/bin listed alphabetically
   Usage
     $ buddyinfo-mon [<n>]
     --
-    j k    line down/up
-    space  page down
-    g G    top/bottom
-    q      quit
+    vi-style navigation, q to quit
   Dependencies
     * python (3.7+)
 
@@ -210,6 +207,17 @@ Scripts in ~/bin listed alphabetically
     * dash (shell)
     * fzf, python
     * xclip (on Xorg), wl-copy (on Wayland)
+
+- irq-mon
+    Interactive /proc/interrupts monitoring tool. Summary is calculated
+    from the visible entries. Update every <n> seconds or 1s if
+    unspecified.
+  Usage
+    $ irq-mon [<n>]
+    --
+    vi-style navigation, q to quit
+  Dependencies
+    * python (3.8+)
 
 - lscat
     Recursively iterate over all files in the current working directory,
