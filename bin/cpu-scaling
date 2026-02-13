@@ -65,6 +65,7 @@ TITLE_INDENT = 2
 SEP          = '  '
 CPU_PATH     = '/sys/devices/system/cpu'
 CPU_INTEL_PSTATE_PATH = CPU_PATH + '/intel_pstate'
+CPU_IDLE_PATH         = CPU_PATH + '/cpuidle'
 ACPI_PATH    = '/sys/firmware/acpi'
 
 def make_title(s: str) -> str:
@@ -99,13 +100,36 @@ def write_cpu_intel_pstate() -> None:
     OUT.write(header + '\n')
     OUT.write(row + '\n')
 
+def write_cpu_idle() -> None:
+    if not os.path.exists(CPU_IDLE_PATH):
+        return
+
+    governors = Bundle()
+    governors.seen.add(read_file(CPU_IDLE_PATH + '/current_governor_ro'))
+    governors.items  = read_file(CPU_IDLE_PATH + '/available_governors').split()
+    driver           = read_file(CPU_IDLE_PATH + '/current_driver')
+
+    title = make_title(CPU_IDLE_PATH)
+    governors.items_unique_marked()
+
+    OUT.write(title + '\n')
+    OUT.write(f'GOVERNORS = {governors.items_unique_marked()}\n')
+    OUT.write(f'DRIVER    = {driver}\n')
+
 def write_cpu_generic(nr_cpus: int) -> None:
+    amd = os.path.exists(CPU_PATH + '/amd_pstate')
     governors = Bundle()
     epps = Bundle()
 
     rows: list[list[str]] = []
-    rows_header = ['CPU', 'GOVERNOR', 'CPU MHz', 'SCALING MHz', 'EPP', 'EPB']
+    rows_header = ['CPU', 'GOVERNOR', 'CPU MHz', 'SCALING MHz']
+    if amd:
+        rows_header.extend(['BOOST', 'PREFCORE', 'RANK'])
+    rows_header.extend(['EPP', 'EPB'])
     rows_align = [len(x) for x in rows_header]
+
+    PREFCORE_RANK_ROW_IDX = len(rows_header) - 3
+    prefcore_ranks = []
 
     for i in range(nr_cpus):
         this_cpufreq  = f'{CPU_PATH}/cpu{i}/cpufreq/'
@@ -122,13 +146,31 @@ def write_cpu_generic(nr_cpus: int) -> None:
         cpu_range     = f'{cpuinfo_min:>4} - {cpuinfo_max:<4}'
         scaling_range = f'{scaling_min:>4} - {scaling_max:<4}'
 
-        row = [cpu, governor, cpu_range, scaling_range, epp, epb]
+        row = [cpu, governor, cpu_range, scaling_range]
+        if amd:
+            boost         = read_file(this_cpufreq + 'boost')
+            prefcore      = read_file(this_cpufreq + 'amd_pstate_hw_prefcore')
+            prefcore_rank = read_file(this_cpufreq + 'amd_pstate_prefcore_ranking')
+            prefcore_ranks.append(int(prefcore_rank))
+            row.extend([boost, prefcore, prefcore_rank])
+        row.extend([epp, epb])
+
         for i, x in enumerate(row):
             rows_align[i] = max(rows_align[i], len(x))
         rows.append(row)
 
         governors.seen.add(governor)
         epps.seen.add(epp)
+
+    if amd:
+        table = {}
+        last = prefcore_ranks[0]; rank = 1
+        for k in sorted(prefcore_ranks, reverse=True):
+            if k != last:
+                last = k; rank += 1
+            table[k] = str(rank)
+        for i, row in enumerate(rows):
+            rows[i][PREFCORE_RANK_ROW_IDX] = table[int(row[PREFCORE_RANK_ROW_IDX])]
 
     governors.items = \
         read_file(f'{CPU_PATH}/cpu0/cpufreq/scaling_available_governors').split()
@@ -258,6 +300,7 @@ def main() -> int:
 
     write_cpu_intel_pstate()
     write_cpu_generic(nr_cpus)
+    write_cpu_idle()
     write_acpi_profiles()
     if interval_ms:
         monitor_cpu_freq(nr_cpus, interval_ms, fallback_mhz, 8)
