@@ -1,7 +1,10 @@
 .dfignore
 README
+alacritty/alacritty.yml
 dfdiff
 htoprc
-touchpad-toggle
-alacritty/alacritty.yml
 i3status/config
+netflush
+netup
+touchpad-toggle
+zram
