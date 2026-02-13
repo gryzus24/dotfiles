@@ -46,7 +46,10 @@ def open_nofail(path: str) -> int:
     except FileNotFoundError: return -1
 
 def read_file(fd: int) -> str:
-    return os.pread(fd, 1 << 20, 0).decode()
+    b = b''; i = 0
+    while block := os.pread(fd, 1 << 20, i):
+        b += block; i += len(block)
+    return b.decode()
 def iter_split_on_whitespace(s: str):
     return (x.split() for x in s.splitlines())
 
