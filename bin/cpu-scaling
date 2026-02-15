@@ -15,7 +15,7 @@ def read_fd(fd: int) -> str:
 
 def read_file(path: str) -> str:
     try:
-        fd = os.open(path, os.O_RDONLY)
+        fd = os.open(path, 0)
     except FileNotFoundError:
         return 'N/A'
     try:
@@ -220,7 +220,7 @@ def monitor_cpu_freq(
     cpu_fds = []
     for i in range(nr_cpus):
         path = f'{CPU_PATH}/cpu{i}/cpufreq/scaling_cur_freq'
-        cpu_fds.append(os.open(path, os.O_RDONLY))
+        cpu_fds.append(os.open(path, 0))
         OUT.write(f'{"CPU" + str(i):6}')
     for e in 'AVG' + str(avg_win_size), 'MIN', 'MAX':
         OUT.write(f'{e:6}')

@@ -11,7 +11,7 @@ def read_fd(fd: int) -> str:
 
 def read_file(path: str, default: str) -> str:
     try:
-        fd = os.open(path, os.O_RDONLY)
+        fd = os.open(path, 0)
     except FileNotFoundError:
         return default
     try:
