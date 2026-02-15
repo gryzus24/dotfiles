@@ -58,6 +58,7 @@ input * {
   repeat_delay 160
   repeat_rate 60
   accel_profile flat
+  pointer_accel 0
 }
 input 1133:50498:Logitech_Wireless_Receiver_Mouse {
   pointer_accel 0.5
@@ -133,7 +134,9 @@ bindsym $mod+Shift+e           exec thunar
 bindsym $mod+Shift+t           exec thunderbird
 bindsym $mod+b                 exec $BROWSER
 bindsym $mod+d                 exec fuzzel
-bindsym $mod+t                 exec systemd-run --scope --slice-inherit --no-block $TERMINAL
+bindsym $mod+t                 exec systemd-run --scope --slice-inherit \
+                                    -u "term-$(awk '/processes/{print sprintf("%x", $2)}' /proc/stat)" \
+                                    --no-block $TERMINAL
 
 ## == Scripts =================================================================
 
