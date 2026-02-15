@@ -182,8 +182,7 @@ require('lazy').setup({
         },
         {
             'nvim-telescope/telescope.nvim',
-            tag = '0.1.8',
-            branch = '0.1.x',
+            version = '*',
             dependencies = {'nvim-lua/plenary.nvim'},
         },
         {'nvim-treesitter/nvim-treesitter'},
