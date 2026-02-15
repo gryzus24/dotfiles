@@ -71,9 +71,6 @@ ACPI_PATH    = '/sys/firmware/acpi'
 def make_title(s: str) -> str:
     return bold(f'{TITLE_INDENT * "="}> {s}')
 
-def read_nr_cpus() -> int:
-    return int(read_file(CPU_PATH + '/present').rpartition('-')[2]) + 1
-
 def write_cpu_intel_pstate() -> None:
     if not os.path.exists(CPU_INTEL_PSTATE_PATH):
         return
@@ -296,7 +293,7 @@ def main() -> int:
                 if not interval_ms:
                     interval_ms = int(arg)
 
-    nr_cpus = read_nr_cpus()
+    nr_cpus = os.sysconf('SC_NPROCESSORS_ONLN')
 
     write_cpu_intel_pstate()
     write_cpu_generic(nr_cpus)
