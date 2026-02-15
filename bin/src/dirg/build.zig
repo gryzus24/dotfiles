@@ -1,16 +1,18 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
-
     const exe = b.addExecutable(.{
         .name = "dirg",
-        .root_source_file = b.path("./dirg.zig"),
-        .target = target,
-        .optimize = optimize,
-        .single_threaded = true,
-        .strip = true,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("dirg.zig"),
+            .target = b.standardTargetOptions(.{}),
+            .optimize = b.standardOptimizeOption(.{}),
+            .strip = true,
+            .single_threaded = true,
+            .omit_frame_pointer = true,
+            .link_libc = false,
+            .link_libcpp = false,
+        }),
     });
     b.installArtifact(exe);
 }

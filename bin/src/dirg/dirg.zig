@@ -1,119 +1,163 @@
 const std = @import("std");
-const fmt = std.fmt;
-const fs = std.fs;
-const heap = std.heap;
-const io = std.io;
-const math = std.math;
-const mem = std.mem;
-const os = std.os;
-const posix = std.posix;
 
-fn isFile(path: []const u8) bool {
-    const pathz = posix.toPosixPath(path) catch
-        return false;
+const usage =
+    \\usage: dirg [a] [c] [h] <newline delimited paths from stdin>
+    \\  a  sort alphabetically
+    \\  c  show file count per directory
+    \\  h  display this help and exit
+    \\
+;
 
-    var statbuf: os.linux.Stat = undefined;
-    if (os.linux.lstat(&pathz, &statbuf) != 0)
-        return false;
+pub fn IndexIterator(comptime T: type, findme: T) type {
+    return struct {
+        buf: []const T,
+        i: usize,
+        bits: std.meta.Int(.unsigned, BlockSize),
 
-    return os.linux.S.ISREG(statbuf.mode);
+        const BlockSize = @min(64, 2 * (std.simd.suggestVectorLength(T) orelse 8));
+        const Block = @Vector(BlockSize, T);
+
+        pub fn init(buf: []const T) @This() {
+            return .{ .buf = buf, .i = 0, .bits = 0 };
+        }
+
+        inline fn nextBit(self: *@This(), i: usize) usize {
+            const lsb = self.bits & (~self.bits + 1);
+            const j = @ctz(self.bits);
+            self.bits ^= lsb;
+            self.i = i + @intFromBool(self.bits == 0) * @as(usize, BlockSize);
+            return i + j;
+        }
+
+        pub fn next(self: *@This()) ?usize {
+            var i = self.i;
+            if (self.bits != 0)
+                return self.nextBit(i);
+
+            const len = self.buf.len;
+            while (i < len & ~@as(usize, BlockSize - 1)) : (i += BlockSize) {
+                const block: Block = self.buf[i..][0..BlockSize].*;
+                const mask = block == @as(Block, @splat(findme));
+                if (@reduce(.Or, mask)) {
+                    self.bits = @bitCast(mask);
+                    return self.nextBit(i);
+                }
+            }
+            while (i < len) : (i += 1) {
+                if (self.buf[i] == findme) {
+                    self.i = i + 1;
+                    return i;
+                }
+            }
+            self.i = len;
+            return null;
+        }
+    };
 }
 
-fn usage(writer: anytype) u8 {
-    _ = writer.write(
-        \\usage: dirg [a] [c] [h] <newline delimited paths from stdin>
-        \\  a  sort alphabetically
-        \\  c  show file count per directory
-        \\  h  display this help and exit
-        \\
-    ) catch
-        return 1;
-
-    return 2;
+fn write(writer: *std.Io.Writer, s: []const u8) void {
+    _ = writer.write(s) catch {};
 }
 
-pub fn main() !u8 {
-    var _arena = heap.ArenaAllocator.init(heap.page_allocator);
-    defer _arena.deinit();
-    const arena = _arena.allocator();
+fn isFile(path: [*:0]const u8) bool {
+    var stat: std.os.linux.Stat = undefined;
+    if (std.os.linux.lstat(path, &stat) == 0)
+        return std.os.linux.S.ISREG(stat.mode);
+    return false;
+}
 
-    var stdout_buffer = io.bufferedWriter(io.getStdOut().writer());
-    defer stdout_buffer.flush() catch {};
-    const stdout = stdout_buffer.writer();
+pub fn main() void {
+    errdefer std.posix.exit(1);
+
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    const alloc = arena.allocator();
+
+    var out_buf: [1 << 16]u8 = undefined;
+    var writer = std.fs.File.stdout().writer(&out_buf);
+    const out = &writer.interface;
+    defer out.flush() catch {};
 
     var f_a = false;
     var f_c = false;
-    for (os.argv[1..]) |arg| {
+    for (std.os.argv[1..]) |arg| {
         var i: usize = 0;
         while (arg[i] != 0) : (i += 1) switch (arg[i]) {
             'a' => f_a = true,
             'c' => f_c = true,
-            'h' => return usage(stdout),
+            'h' => return write(out, usage),
             else => {},
         };
     }
 
-    const buf = try io.getStdIn().reader().readAllAlloc(arena, math.maxInt(usize));
-    var lines = mem.tokenizeScalar(u8, buf, '\n');
-    var dircnt = std.StringArrayHashMap(u32).init(arena);
+    var in = std.fs.File.stdin().reader(&.{});
+    const reader = &in.interface;
 
-    while (lines.next()) |line| {
-        if (isFile(line)) {
-            if (fs.path.dirname(line)) |dname| {
-                const entry = try dircnt.getOrPutValue(dname, 1);
+    var data: std.ArrayList(u8) = .empty;
+    try reader.appendRemainingUnlimited(alloc, &data);
+    try data.append(alloc, '\n');
+
+    var dir_count = std.StringArrayHashMap(u32).init(alloc);
+
+    var last: usize = 0;
+    var it: IndexIterator(u8, '\n') = .init(data.items);
+    while (it.next()) |nl| {
+        const line = data.items[last..nl];
+        last = nl + 1;
+        data.items[nl] = 0;
+
+        if (isFile(line.ptr[0..line.len :0])) {
+            if (std.fs.path.dirname(line)) |dir| {
+                const entry = try dir_count.getOrPutValue(dir, 1);
                 if (entry.found_existing)
                     entry.value_ptr.* += 1;
             }
         }
     }
-
-    if (dircnt.count() == 0)
-        return 0;
+    if (dir_count.count() == 0)
+        return;
 
     if (f_a) {
         const SortCtx = struct {
             dirs: []const []const u8,
 
-            pub fn lessThan(self: @This(), a_indx: usize, b_indx: usize) bool {
-                switch (mem.order(u8, self.dirs[a_indx], self.dirs[b_indx])) {
+            pub fn lessThan(self: @This(), a: usize, b: usize) bool {
+                switch (std.mem.order(u8, self.dirs[a], self.dirs[b])) {
                     .eq => unreachable,
                     .lt => return true,
                     .gt => return false,
                 }
             }
         };
-        dircnt.sort(SortCtx{ .dirs = dircnt.keys() });
+        dir_count.sort(SortCtx{ .dirs = dir_count.keys() });
     } else {
         const SortCtx = struct {
             counts: []u32,
 
-            pub fn lessThan(self: @This(), a_indx: usize, b_indx: usize) bool {
-                return self.counts[a_indx] < self.counts[b_indx];
+            pub fn lessThan(self: @This(), a: usize, b: usize) bool {
+                return self.counts[a] < self.counts[b];
             }
         };
-        dircnt.sort(SortCtx{ .counts = dircnt.values() });
+        dir_count.sort(SortCtx{ .counts = dir_count.values() });
     }
 
     if (f_c) {
-        var maxcnt: u32 = 0;
+        var max: u32 = 0;
         if (f_a) {
-            for (dircnt.values()) |cnt| if (cnt > maxcnt) {
-                maxcnt = cnt;
-            };
+            for (dir_count.values()) |cnt| {
+                max = @max(max, cnt);
+            }
         } else {
-            maxcnt = dircnt.values()[dircnt.count() - 1];
+            max = dir_count.values()[dir_count.count() - 1];
         }
 
-        const width = fmt.count("{}", .{maxcnt});
-        for (dircnt.keys(), dircnt.values()) |dname, cnt| {
-            try fmt.formatInt(cnt, 10, .lower, .{ .width = width }, stdout);
-            try stdout.print(" {s}\n", .{dname});
+        const width = std.fmt.count("{d}", .{max});
+        for (dir_count.keys(), dir_count.values()) |dir, cnt| {
+            out.printIntAny(cnt, 10, .lower, .{ .width = width }) catch {};
+            out.print(" {s}\n", .{dir}) catch {};
         }
     } else {
-        for (dircnt.keys()) |dname| {
-            try stdout.print("{s}\n", .{dname});
+        for (dir_count.keys()) |dir| {
+            out.print("{s}\n", .{dir}) catch {};
         }
     }
-
-    return 0;
 }
