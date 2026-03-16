@@ -112,7 +112,8 @@ alias ip='ip -color=auto'
 alias ls='ls --color=auto --time-style=long-iso -N'
 alias l='ls -lh'
 alias la='ls -A'
-alias mv='mv -n'
+alias mv='mv -i'
+alias cp='cp -i'
 alias disassemble='objdump -d --no-show-raw-insn --no-addresses'
 
 # ffmpeg
