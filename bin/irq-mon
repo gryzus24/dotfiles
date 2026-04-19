@@ -3,28 +3,125 @@ from __future__ import annotations
 
 import curses
 import os
+import stat
 import sys
 import time
 
-# This program is split into the 'Implementation' part, and
-# the 'Logic' part. I'm not exactly sure why, but I like it.
+# This is the most useless of useful programs. Confidently providing a
+# solution for a problem defying any sensible diagnosis. Designed with
+# thought and care, but serving no one - not even its author.
+
+## == UI ======================================================================
+
+MOUSE_L_RELEASE  = 0x1
+MOUSE_L_PRESS    = 0x2
+MOUSE_R_RELEASE  = 0x400
+MOUSE_R_PRESS    = 0x800
+MOUSE_WHEEL_UP   = 0x10000
+MOUSE_WHEEL_DOWN = 0x200000
+MOUSE_REPORTING  = 0x10000000
+
+def xterm_mouse_reporting_enable(mask: int) -> int:
+    new, _ = curses.mousemask(mask | curses.REPORT_MOUSE_POSITION)
+    os.write(1, b'\033[?1003h')
+    return new
+
+def xterm_mouse_reporting_disable(mask: int) -> int:
+    os.write(1, b'\033[?1003l')
+    new, _ = curses.mousemask(mask & ~curses.REPORT_MOUSE_POSITION)
+    return new
+
+def xterm_mouse_reporting_toggle() -> int:
+    _, old = curses.mousemask(0)
+    if old & curses.REPORT_MOUSE_POSITION:
+        return xterm_mouse_reporting_disable(old)
+    else:
+        return xterm_mouse_reporting_enable(old)
+
+class Dim:
+    __slots__ = ('y', 'x', 'h', 'w')
+    def __init__(self, *, y: int = 0, x: int = 0, h: int = 1, w: int = 1) -> None:
+        self.y = y; self.x = x
+        self.h = h; self.w = w
+    def cp(self, *,
+           y: int | None = None, x: int | None = None,
+           h: int | None = None, w: int | None = None) -> Dim:
+        return Dim(
+            y=self.y if y is None else y,
+            x=self.x if x is None else x,
+            h=self.h if h is None else h,
+            w=self.w if w is None else w)
+    @property
+    def x_w(self) -> int: return self.x + self.w
+    @property
+    def y_h(self) -> int: return self.y + self.h
+
+class Column:
+    __slots__ = ('cell', 'sep', 'width')
+    def __init__(self, cell: int) -> None:
+        self.cell = cell
+        self.sep = 1
+        self.width = self.cell + self.sep
+
+class Button:
+    __slots__ = ('dim', 'text', 'value')
+    def __init__(self, y: int, x: int, text: str, value: int) -> None:
+        self.dim = Dim(y=y, x=x, w=len(text))
+        self.text = text
+        self.value = value
+
+YX = tuple[int, int]
+
+def yx_in_dim(y: int, x: int, dim: Dim) -> bool:
+    return (dim.y <= y < dim.y_h and
+            dim.x <= x < dim.x_w)
+
+def yx_norm(y: int, x: int, dim: Dim) -> YX:
+    return y - dim.y, x - dim.x
+
+def mvaddstr(win: curses.window, y: int, x: int, s: str, attr: int = 0) -> bool:
+    try: win.addstr(y, x, s, attr) if attr else win.addstr(y, x, s)
+    except curses.error: return True
+    return False
+
+def addstr(win: curses.window, s: str, attr: int) -> bool:
+    try: win.addstr(s, attr)
+    except curses.error: return True
+    return False
+
+def mvchgat(win: curses.window, y: int, x: int, n: int, attr: int) -> bool:
+    try: win.chgat(y, x, n, attr)
+    except curses.error: return True
+    return False
+
+## == DATA ====================================================================
 
 class Cpus:
-    __slots__ = ('active', 'mask')
+    __slots__ = ('nr_online', 'mask_Nth_bits', 'mask')
     def __init__(self, cpuXs: list[str]) -> None:
-        self.active = len(cpuXs)
-        m = 0
+        self.nr_online = len(cpuXs)
+        self.mask_Nth_bits = []
+        self.mask = 0
         for cpuX in cpuXs:
-            m |= 1 << int(cpuX[3:])
-        self.mask = m
+            X = int(cpuX[3:])
+            self.mask |= 1 << X
+            self.mask_Nth_bits.append(X)
 
+# This is code you get when you refuse to introduce proper
+# structs into your language.
 class Irq:
-    __slots__ = ('nr', 'cpus', 'desc', 'aff', 'eff')
-    def __init__(self, nr: str, cpus: list[int], desc: str, eff: int) -> None:
-        self.nr = nr
-        self.cpus = cpus
-        self.desc = desc
-        self.eff = eff
+    __slots__ = ('nr', 'cpus', 'desc', 'iwusr', 'aff', 'eff', 'hint')
+    def __init__(self, nr: str, cpus: list[int], desc: str,
+                 iwusr: int, aff: int, eff: int, hint: int) -> None:
+        self.nr = nr; self.cpus = cpus; self.desc = desc
+        self.iwusr = iwusr; self.aff = aff; self.eff = eff; self.hint = hint
+
+    def set_affinity(self, mask: int) -> None:
+        if self.iwusr:
+            try: fd = os.open(f'/proc/irq/{self.nr}/smp_affinity', os.O_WRONLY)
+            except PermissionError: return
+            os.write(fd, f'{mask:x}'.encode())
+            os.close(fd)
 
 class IrqStat:
     WINSZ = 5
@@ -41,8 +138,59 @@ class IrqStat:
     def avg(self) -> int:
         return sum(self.window) // ((1 << IrqStat.WINSZ) - 1)
 
+MOUSE_SCROLL_STEP = 4
+HSCROLL_STEP      = 5
+
+STATE_DIFF  = 0
+STATE_EDIT  = 1
+STATE_TOTAL = 2
+STATE_NR    = 3
+
+class Layout:
+    BTN_HIDE_DESC = STATE_NR
+    BTN_FILTER    = STATE_NR + 1
+
+    __slots__ = ('col', 'left', 'header', 'main', 'footer', 'summary', 'desc', 'buttons')
+    def __init__(self, cell_width: int, *, root: bool) -> None:
+        _left_w      = 5 + cell_width + 1
+        _main_w      = curses.COLS - _left_w
+        _header_h    = 1
+        _footer_h    = 1
+        _summary_h   = 1
+        _main_h      = curses.LINES - _header_h - _footer_h - _summary_h
+        _edit        = '[EDIT]' if root else '[EDIT(need root)]'
+        self.col     = Column(cell_width)
+        self.left    = Dim(h=curses.LINES,    w=_left_w)
+        self.header  = Dim(x=_left_w,         w=_main_w)
+        self.main    = Dim(y=_header_h,       x=_left_w,    h=_main_h, w=_main_w)
+        self.footer  = Dim(y=self.main.y_h,   h=_footer_h,  w=curses.COLS)
+        self.summary = Dim(y=self.footer.y_h, h=_summary_h, w=curses.COLS)
+        self.buttons = [
+            Button(self.footer.y, self.footer.x + 9, '[DIFF]', STATE_DIFF),
+            Button(self.footer.y, self.footer.x + 15, _edit, STATE_EDIT),
+            Button(self.footer.y, self.footer.x + 15 + len(_edit), '[TOTAL]', STATE_TOTAL),
+            Button(self.footer.y, self.footer.x_w - 25, '[HIDE DESC d]', Layout.BTN_HIDE_DESC),
+            Button(self.footer.y, self.footer.x_w - 11, '[FILTER /]', Layout.BTN_FILTER),
+        ]
+
+class Format:
+    __slots__ = (
+        'head_left', 'head_main', 'head_desc', 'left', 'main', 'main_attrs',
+        'descs', 'desc_width_max', 'footer', 'summary_left', 'summary_main')
+    def __init__(self) -> None:
+        self.head_left = self.head_main = self.head_desc = ''
+        self.left: list[str] = []
+        self.main: list[str] = []
+        self.main_attrs: list[list[tuple[int, int]]] = []
+        self.descs: list[tuple[str, int]] = []
+        self.desc_width_max = 0
+        self.footer = ''
+        self.summary_left = self.summary_main = ''
+
+## == IMPLEMENTATION ==========================================================
+
 def open_nofail(path: str) -> int:
-    try:                      return os.open(path, 0)
+    try: return os.open(path, 0)
     except FileNotFoundError: return -1
 
 def read_file(fd: int) -> str:
@@ -50,149 +198,243 @@ def read_file(fd: int) -> str:
     while block := os.pread(fd, 1 << 20, i):
         b += block; i += len(block)
     return b.decode()
-def iter_split_on_whitespace(s: str):
-    return (x.split() for x in s.splitlines())
 
 def irq_nr(p: list[str]) -> str:
     return p[0][:-1]
-def irq_cpus(p: list[str], cpus: Cpus) -> list[int]:
-    r = [int(x) for x in p[1:1 + cpus.active]]
-    if len(r) == 1:
-        r += [0] * (cpus.active - 1)
-    return r
-def irq_desc(p: list[str], cpus: Cpus) -> str:
-    return ' '.join(p[1 + cpus.active:])
 
-def irq_dtoa(d: int) -> str:
+def irq_cpus(p: list[str], cpus: Cpus) -> list[int]:
+    r = [int(x) for x in p[1:1 + cpus.nr_online]]
+    if len(r) == 1:
+        r += [0] * (cpus.nr_online - 1)
+    return r
+
+def irq_desc(p: list[str], cpus: Cpus) -> str:
+    return ' '.join(p[1 + cpus.nr_online:])
+
+def irqs_from_rows(rows: list[list[str]], cpus: Cpus, fd_lo: int) -> list[Irq]:
+    result = []
+    for x in rows:
+        nr = irq_nr(x)
+
+        iwusr = False
+        aff_fd = eff_fd = hint_fd = -1
+        if nr.isdecimal():
+            aff_fd = open_nofail(f'/proc/irq/{nr}/smp_affinity')
+            iwusr = bool(os.stat(aff_fd).st_mode & stat.S_IWUSR)
+            eff_fd = open_nofail(f'/proc/irq/{nr}/effective_affinity')
+            hint_fd = open_nofail(f'/proc/irq/{nr}/affinity_hint')
+
+        aff = eff = hint = 0
+        if aff_fd != -1: aff = int(os.read(aff_fd, 4096), 16)
+        if eff_fd != -1: eff = int(os.read(eff_fd, 4096), 16)
+        if hint_fd != -1: hint = int(os.read(hint_fd, 4096), 16)
+
+        if (fd_hi := max(aff_fd, eff_fd, hint_fd)) != -1:
+            # While the `close_range` syscall has inclusive semantics,
+            # Python's `os.closerange` was introduced before the syscall
+            # and has insane exclusive semantics...
+            os.closerange(fd_lo + 1, fd_hi + 1)
+        result.append(
+            Irq(nr, irq_cpus(x, cpus), irq_desc(x, cpus), iwusr, aff, eff, hint))
+    return result
+
+def dtoa(d: int) -> str:
     if not d:       return ''
-    if d < 1_000:   return str(d)
-    if d < 10_000:  return f'{d // 1000}k{d // 10 % 100:02}'
+    if d < 10_000:  return str(d)
     if d < 100_000: return f'{d // 1000}k{d // 100 % 10}'
     else:           return f'{d // 1000}k'
+
 def filter_irqs(irqs_curr: list[Irq], filtr: str = '') -> list[int]:
     if filtr:
         filtr = filtr.lower()
-        return [
-            i for i, irq in enumerate(irqs_curr)
-            if filtr in irq.desc.lower()
-        ]
+        return [i for i, irq in enumerate(irqs_curr) if filtr in irq.desc.lower()]
     else:
         return list(range(len(irqs_curr)))
 
-def draw_tail(win: curses.window, y: int, cumulative: list[int], *, more: bool) -> None:
-    if more:
-        hint = '[ MORE j k ]=[ FILTER / ]'
-    else:
-        hint = '[ j k ]=[ FILTER / ]'
-    y = min(y, curses.LINES - 2)
-    s_cpus_cumulative = ' '.join([f'{irq_dtoa(x):>4}' for x in cumulative[:-1]])
-    try:
-        win.hline(y, 0, '=', curses.COLS)
-        win.addstr(y, curses.COLS - len(hint) - 1, hint)
-        win.addstr(
-            y + 1, 1,
-            f'SUM {irq_dtoa(cumulative[-1]):>4} | {s_cpus_cumulative}',
-            curses.A_BOLD
-        )
-    except curses.error:
-        pass
-
-def draw(
-        win: curses.window,
-        scroll: int,
+def format(
+        lay: Layout,
         cpus: Cpus,
         irqs_curr: list[Irq],
         irqs_prev: list[Irq],
         stats: dict[str, IrqStat],
+        state: int,
         *,
         update_stats: bool,
-        filtr: str = '',
-) -> int:
-    cpu_column_offset = []
+        filtr: str,
+) -> tuple[list[int], Format]:
+    cell = lay.col.cell
 
-    head = []
-    i = 0; mask = cpus.mask
-    while mask:
-        cpu_column_offset.append(len(head) * 5)
-        if mask & 1:
-            head.append(f'{i:4}')
-        i += 1; mask >>= 1
+    fmt = Format()
+    cols_sum = [0] * cpus.nr_online
 
-    s_head = 'CPU  ' + ' '.join(head)[3:]
-    try:
-        win.addstr(0, 0, f' IRQ AVG{IrqStat.WINSZ} {s_head} DESCRIPTION', curses.A_BOLD)
-    except curses.error:
-        pass
-
-    y = 1
-    cumulative = [0] * (cpus.active + 1)
-    irqs = filter_irqs(irqs_curr, filtr)
-    for i in irqs[scroll:scroll + curses.LINES - 2]:
+    irq_indices = filter_irqs(irqs_curr, filtr)
+    for i in irq_indices:
         curr = irqs_curr[i]
         prev = irqs_prev[i]
-
         stat = stats.setdefault(curr.nr, IrqStat())
 
         total = 0
-        per_cpu_counts: list[str] = []
-        for j in range(cpus.active):
+        cpu_row = []
+        cpu_row_attr = []
+        for j in range(cpus.nr_online):
             d = curr.cpus[j] - prev.cpus[j]
-            total += d
-            per_cpu_counts.append(f'{irq_dtoa(d):>4}')
-            cumulative[j] += d
-        cumulative[-1] += total
+            cols_sum[j] += d; total += d
+            if state == STATE_DIFF:
+                cpu_row.append(f'{dtoa(d):>{cell}}')
+            elif state == STATE_TOTAL:
+                t = curr.cpus[j]
+                if t: cpu_row.append(f'{t:>{cell}}')
+                else: cpu_row.append(' ' * cell)
+            else:
+                bit = 1 << j
+                if curr.aff & bit:
+                    if d: b = ['~'] * 4
+                    else: b = ['_'] * 4
+                else: b = [' '] * 4
+                e_attr = h_attr = 0
+                if curr.eff & bit:
+                    b[1] = 'E'; e_attr = curses.color_pair(2)
+                if curr.hint & bit:
+                    b[2] = 'H'; h_attr = curses.color_pair(3)
+                cpu_row.append(''.join(b))
+                cpu_row_attr.append((e_attr, h_attr))
 
         if update_stats:
             stat.add(total)
             if total:
                 stat.seen = True
 
-        s_per_cpu_counts = ' '.join(per_cpu_counts)
-        try:
-            win.addstr(y, 0,
-                f'{"*" if stat.seen else " "}'
-                f'{curr.nr:3} '
-                f'{irq_dtoa(stat.avg()):>4} | '
-                f'{s_per_cpu_counts} ')
-            win.addstr(curr.desc, bool(total) * curses.A_BOLD)
-            if not total:
-                mask = curr.eff
-                while mask:
-                    bit = mask & (~mask + 1)
-                    cpuX = bit.bit_length() - 1  # tzcnt
-                    mask ^= bit
-                    win.addstr(y, cpu_column_offset[cpuX] + 11 + 4, '-')
-        except curses.error:
-            pass
+        _seen = '~' if stat.seen else ' '
+        fmt.left.append(f'{_seen}{curr.nr:3} {dtoa(stat.avg()):>{cell}}|')
+        fmt.main.append((lay.col.sep * ' ').join(cpu_row) + ' ')
+        fmt.main_attrs.append(cpu_row_attr)
+        if len(desc := f'|{curr.desc}') > fmt.desc_width_max:
+            fmt.desc_width_max = len(desc)
+        fmt.descs.append((desc, bool(total) * curses.A_BOLD))
+
+    fmt.head_left = f' IRQ {f"AVG{IrqStat.WINSZ}":>{cell}}|'
+    fmt.head_main = (lay.col.sep * ' ').join([f'{x:{cell}}' for x in cpus.mask_Nth_bits]) + ' '
+    fmt.head_desc = '|DESCRIPTION'
+
+    _state_btns = '―' * 9 + ''.join([lay.buttons[i].text for i in range(3)])
+    _hint = f'{lay.buttons[3].text}―{lay.buttons[4].text}―'
+    _pad = (lay.footer.w - len(_state_btns) - len(_hint)) * '―'
+    fmt.footer = _state_btns + _pad + _hint
+
+    fmt.summary_left = f' SUM {dtoa(sum(cols_sum)):>{cell}} '
+    fmt.summary_main = ' '.join([f'{dtoa(x):>{cell}}' for x in cols_sum])
+    return irq_indices, fmt
+
+def draw(
+        win: curses.window,
+        lay: Layout,
+        fmt: Format,
+        cursor: YX,
+        cpu_column_offset: list[int],
+        state: int,
+        scroll: int,
+        hscroll: int,
+        *,
+        hide_desc: bool,
+) -> tuple[int, Dim, int]:
+    if fmt.desc_width_max >= lay.main.w:
+        hide_desc = True
+    desc_x = lay.main.x_w - (not hide_desc) * fmt.desc_width_max
+    main_w = desc_x - lay.main.x
+
+    mvaddstr(win, lay.header.y, lay.left.x, fmt.head_left, curses.A_BOLD)
+    mvaddstr(win, lay.header.y, lay.main.x, fmt.head_main[hscroll:hscroll + main_w], curses.A_BOLD)
+    mvaddstr(win, lay.header.y, desc_x, fmt.head_desc, curses.A_BOLD)
+
+    y = lay.main.y
+    for i in range(scroll, min(scroll + lay.main.h, len(fmt.main))):
+        mvaddstr(win, y, lay.left.x, fmt.left[i])
+        mvaddstr(win, y, lay.main.x, fmt.main[i][hscroll:hscroll + main_w])
+        mvaddstr(win, y, desc_x, *fmt.descs[i])
+
+        xn = lay.main.x - hscroll + 1
+        for j, attrs in enumerate(fmt.main_attrs[i]):
+            for x, attr in enumerate(attrs, xn + cpu_column_offset[j]):
+                if x < lay.main.x: continue
+                if x >= lay.main.x + main_w: break
+                if attr: mvchgat(win, y, x, 1, attr)
+        y += 1
+
+    mvaddstr(win, y, lay.footer.x, fmt.footer)
+    if len(fmt.main) - scroll > lay.main.h:
+        _scroll_hint = '[MORE j k]―'
+    else:
+        _scroll_hint = '[j k]―'
+    mvaddstr(win, y, lay.buttons[3].dim.x - len(_scroll_hint), _scroll_hint)
+
+    btn = lay.buttons[state].dim; btn_y = y
+    mvchgat(win, y, btn.x, btn.w, curses.color_pair(3) | curses.A_REVERSE | curses.A_BOLD)
+
+    mvaddstr(win, y + 1, lay.left.x, fmt.summary_left, curses.A_BOLD)
+    mvaddstr(win, y + 1, lay.left.x_w, fmt.summary_main[hscroll:hscroll + main_w], curses.A_BOLD)
+
+    reg = Dim(
+        h=y - lay.main.y,
+        w=min(main_w, len(fmt.head_main) - hscroll))
+    yn, xn = yx_norm(*cursor, lay.main)
+    if yx_in_dim(yn, xn, reg):
+        y = lay.main.y + yn
+        w = lay.col.width
+        for off in cpu_column_offset:
+            if off > xn + hscroll:
+                x = off - w + lay.main.x - hscroll
+                break
         else:
-            y += 1
+            x = cpu_column_offset[-1] + lay.main.x - hscroll
 
-    draw_tail(win, y, cumulative, more=y > curses.LINES - 2)
-    return len(irqs)
+        if (x_cut := lay.main.x - x) > 0:
+            w -= x_cut; x += x_cut
+        if (w_cut := desc_x - x) < w:
+            w = w_cut
 
-def filtring_toggle(enable: bool) -> bool:
+        mvchgat(win, lay.header.y, x, w, curses.A_STANDOUT)
+        mvchgat(win, y, x, w, curses.A_STANDOUT)
+
+        mvchgat(win, y, lay.left.x, lay.left.w - 1, curses.A_UNDERLINE)
+        mvchgat(win, y, desc_x + 1, fmt.desc_width_max, curses.A_UNDERLINE)
+
+    return max(len(fmt.head_main) - main_w , 0), reg, btn_y
+
+def filtring_toggle(enable: bool) -> tuple[bool, bool]:
     enable = not enable
     curses.curs_set(enable)
-    return enable
+    return enable, True
+def filtr_push(filtr: str, char: str) -> tuple[str, int, bool]:
+    return filtr + char, 0, True
+def filtr_pop(filtr: str) -> tuple[str, int, bool]:
+    return filtr[:-1], 0, True
+def filtr_clear() -> tuple[str, int, bool]:
+    return '', 0, True
+def filtr_draw(win: curses.window, filtr: str) -> None:
+    win.hline(curses.LINES - 1, 0, ' ', curses.COLS)
+    mvaddstr(win, curses.LINES - 1, 0, 'Filter: ' + filtr)
 
-def filtr_push(filtr: str, char: str) -> tuple[str, int]:
-    return filtr + char, 0
-def filtr_pop(filtr: str) -> tuple[str, int]:
-    return filtr[:-1], 0
-def filtr_clear() -> tuple[str, int]:
-    return '', 0
+def state_set(state: int) -> tuple[int, int, bool]:
+    return state, 0, True
 
 key_up                   = lambda k: k in {b'k', b'K', b'KEY_UP'}
 key_down                 = lambda k: k in {b'j', b'J', b'KEY_DOWN'}
+key_left                 = lambda k: k in {b'h', b'H', b'KEY_LEFT'}
+key_right                = lambda k: k in {b'l', b'L', b'KEY_RIGHT'}
 key_page_up              = lambda k: k in {b'KEY_PPAGE'}
 key_page_down            = lambda k: k in {b'KEY_NPAGE', b' '}
 key_top                  = lambda k: k in {b'g', b'KEY_HOME'}
 key_bottom               = lambda k: k in {b'G', b'KEY_END'}
+key_tab_next             = lambda k: k in {b'^I'}
+key_tab_prev             = lambda k: k in {b'KEY_BTAB'}
+key_desc_toggle          = lambda k: k in {b'd', b'D'}
 key_backspace            = lambda k: k in {b'^H', b'KEY_BACKSPACE'}
 key_exit                 = lambda k: k in {b'q', b'Q', b'^X'}
 key_filtr_prompt_toggle  = lambda k: k in {b'/', b'KEY_F(4)'}
-key_filtr_prompt_disable = lambda k: k in {b'^[', b'^J', b'^M'}  #]
+key_filtr_prompt_disable = lambda k: k in {b'^[', b'^J', b'^M'}
 key_filtr_prompt_clear   = lambda k: k in {b'^W'}
+key_filtr_prompt_typable = lambda k: len(k) == 1 and 32 <= ord(k) <= 127
+key_mouse                = lambda k: k in {b'KEY_MOUSE'}
 
 def c_main(win: curses.window) -> int:
     try:
@@ -208,16 +450,26 @@ def c_main(win: curses.window) -> int:
     curses.halfdelay(delay_ds)
     win.keypad(True)
 
+    root = not os.geteuid()
     proc_intr_fd = os.open('/proc/interrupts', 0)
 
-    refresh = filtring = False
-    refresh_last = nr_potentially_drawable = 0
-    filtr, scroll = filtr_clear()
-
     cpus = Cpus([])
-    irqs_prev: list[Irq] = []
     irqs_curr: list[Irq] = []
+    irqs_prev: list[Irq] = []
+    refresh = reformat = False
+    refresh_last = 0
+
+    cpu_column_offset = []
+    fmt = Format()
+    irq_indices: list[int] = []
+    layout = Layout(4, root=root)
     stats: dict[str, IrqStat] = {}
+
+    cursor: YX = (0, 0)
+    filtr = ''
+    filtring = hide_desc = False
+    scroll = hscroll = 0
+    state = STATE_DIFF
 
     while True:
         now = time.monotonic_ns()
@@ -231,91 +483,123 @@ def c_main(win: curses.window) -> int:
             irqs_curr = []
             cpus_prev = cpus
 
-            file = read_file(proc_intr_fd)
-            rows = iter_split_on_whitespace(file)
-            cpus = Cpus(next(rows))
-
-            fd_lo = fd_hi = proc_intr_fd + 1
-            for x in rows:
-                nr = irq_nr(x)
-
-                eff_fd = -1
-                if nr.isdecimal():
-                    eff_fd = open_nofail(f'/proc/irq/{nr}/effective_affinity')
-
-                eff = 0
-                if eff_fd != -1:
-                    eff = int(os.read(eff_fd, 4096), 16)
-                    fd_hi = eff_fd
-
-                irqs_curr.append(
-                    Irq(nr, irq_cpus(x, cpus), irq_desc(x, cpus), eff))
-
-            if fd_lo <= fd_hi:
-                # While the `close_range` syscall has inclusive semantics,
-                # Python's `os.closerange` was introduced before the syscall
-                # and has insane exclusive semantics...
-                os.closerange(fd_lo, fd_hi + 1)
+            file      = read_file(proc_intr_fd)
+            rows      = (x.split() for x in file.splitlines())
+            cpus      = Cpus(next(rows))
+            irqs_curr = irqs_from_rows(list(rows), cpus, proc_intr_fd)
 
             assumptions_changed = (
-                cpus.active != cpus_prev.active or
-                len(irqs_curr) != len(irqs_prev)
-            )
+                cpus.nr_online != cpus_prev.nr_online or
+                len(irqs_curr) != len(irqs_prev))
             if assumptions_changed:
                 irqs_prev = irqs_curr
+                hscroll = 0
+            reformat = True
+
+        if reformat:
+            layout = Layout(7 if state == STATE_TOTAL else 4, root=root)
+
+            cpu_column_offset = []; mask = cpus.mask
+            while mask:
+                if mask & 1:
+                    off = len(cpu_column_offset) * layout.col.width
+                    cpu_column_offset.append(off)
+                mask >>= 1
+
+            irq_indices, fmt = format(
+                layout, cpus, irqs_curr, irqs_prev, stats, state,
+                update_stats=refresh, filtr=filtr)
+            reformat = False
 
         win.erase()
-        nr_potentially_drawable = draw(
-            win, scroll, cpus, irqs_curr, irqs_prev, stats,
-            update_stats=refresh, filtr=filtr
-        )
+        hscroll_max, matrix_reg, btn_y = draw(
+            win, layout, fmt, cursor, cpu_column_offset, state,
+            scroll, hscroll, hide_desc=hide_desc)
         if filtring:
-            try:
-                win.hline(curses.LINES - 1, 0, ' ', curses.COLS)
-                win.addstr(curses.LINES - 1, 0, 'Filter: ' + filtr)
-            except curses.error:
-                pass
+            filtr_draw(win, filtr)
 
         c = win.getch()
         refresh = c == -1
         if not refresh:
             if c == curses.KEY_RESIZE:
                 curses.update_lines_cols()
+                reformat = True
 
             key = curses.keyname(c)
-            if key_filtr_prompt_toggle(key):
-                filtring = filtring_toggle(filtring)
+            if key_mouse(key):
+                try:
+                    _, x, y, _, bstate = curses.getmouse()
+                except curses.error:
+                    continue
+                cursor = (y, x)
+                if bstate & MOUSE_L_PRESS:
+                    if y == btn_y:
+                        for btn in layout.buttons:
+                            if btn.dim.x <= x < btn.dim.x_w:
+                                if btn.value in {STATE_DIFF, STATE_EDIT, STATE_TOTAL}:
+                                    state, hscroll, reformat = state_set(btn.value)
+                                elif btn.value == Layout.BTN_HIDE_DESC:
+                                    hide_desc = not hide_desc
+                                elif btn.value == Layout.BTN_FILTER:
+                                    filtring, reformat = filtring_toggle(filtring)
+                    elif root and state == STATE_EDIT:
+                        yn, xn = yx_norm(*cursor, layout.main)
+                        if yx_in_dim(yn, xn, matrix_reg):
+                            for i, cpu in enumerate(cpus.mask_Nth_bits):
+                                if cpu_column_offset[i] > xn + hscroll:
+                                    cpu_bit = 1 << (cpu - 1)
+                                    break
+                            else:
+                                cpu_bit = 1 << (cpus.mask.bit_length() - 1)
+                            irq = irqs_curr[irq_indices[yn]]
+                            irq.set_affinity(cpu_bit)
+                            irq.set_affinity(irq.aff | cpu_bit)
+                            refresh = True
+                elif bstate & MOUSE_R_PRESS:
+                    xterm_mouse_reporting_toggle()
+                elif bstate & MOUSE_WHEEL_DOWN:
+                    scroll = min(scroll + MOUSE_SCROLL_STEP, len(irq_indices) - 1)
+                elif bstate & MOUSE_WHEEL_UP:
+                    scroll = max(scroll - MOUSE_SCROLL_STEP, 0)
+            elif key_filtr_prompt_toggle(key):
+                filtring, reformat = filtring_toggle(filtring)
             elif key_filtr_prompt_disable(key):
-                filtring = filtring_toggle(True)
+                filtring, reformat = filtring_toggle(True)
             elif key_filtr_prompt_clear(key):
                 if filtr:
-                    filtr, scroll = filtr_clear()
+                    filtr, scroll, reformat = filtr_clear()
                 else:
-                    filtring = filtring_toggle(True)
+                    filtring, reformat = filtring_toggle(True)
             elif filtring:
-                if key_backspace(key) :
+                if key_filtr_prompt_typable(key):
+                    filtr, scroll, reformat = filtr_push(filtr, key.decode())
+                elif key_backspace(key) :
                     if filtr:
-                        filtr, scroll = filtr_pop(filtr)
+                        filtr, scroll, reformat = filtr_pop(filtr)
                     else:
-                        filtring = filtring_toggle(True)
-                elif len(key) == 1 and 32 <= ord(key) <= 127:
-                    filtr, scroll = filtr_push(filtr, key.decode())
+                        filtring, reformat = filtring_toggle(True)
             elif key_up(key):
                 scroll -= scroll > 0
             elif key_down(key):
-                scroll += scroll < nr_potentially_drawable - 1
+                scroll += scroll < len(irq_indices) - 1
+            elif key_left(key):
+                hscroll = max(hscroll - HSCROLL_STEP, 0)
+            elif key_right(key):
+                hscroll = min(hscroll + HSCROLL_STEP, hscroll_max)
             elif key_page_up(key):
-                scroll -= curses.LINES - 1
-                if scroll < 0:
-                    scroll = 0
+                scroll = max(scroll - (layout.main.h - 3), 0)
             elif key_page_down(key):
-                scroll += curses.LINES - 1
-                if scroll > nr_potentially_drawable - 1:
-                    scroll = nr_potentially_drawable - 1
-            elif key_top(key) :
+                scroll = min(scroll + (layout.main.h - 3), len(irq_indices) - 1)
+            elif key_top(key):
                 scroll = 0
             elif key_bottom(key):
-                scroll = nr_potentially_drawable - 1
+                scroll = len(irq_indices) - 1
+            elif key_tab_next(key):
+                state, hscroll, reformat = state_set((state + 1) % STATE_NR)
+            elif key_tab_prev(key):
+                state, hscroll, reformat = state_set((state - 1) % STATE_NR)
+            elif key_desc_toggle(key):
+                hide_desc = not hide_desc
             elif key_exit(key):
                 return 0
 
@@ -326,8 +610,15 @@ def main() -> int:
         curses.cbreak()
         curses.noecho()
         curses.curs_set(0)
+        curses.mouseinterval(0)
+        curses.start_color()
+        curses.use_default_colors()
+        for i in range(1, 8):
+            curses.init_pair(i, 0, i)
+        xterm_mouse_reporting_enable(curses.ALL_MOUSE_EVENTS)
         return c_main(win)
     finally:
+        xterm_mouse_reporting_disable(0)
         curses.endwin()
 
 if __name__ == '__main__':
