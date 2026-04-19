@@ -1,0 +1,42 @@
+#!/usr/bin/python3 -S
+from __future__ import annotations
+
+import os
+import sys
+
+class R:
+    __slots__ = ('indent', 'beg', 'end', 'name', 'size')
+    def __init__(self, indent: int, beg: int, end: int, name: str) -> None:
+        self.indent, self.beg, self.end, self.name = indent, beg, end, name
+        self.size = end + 1 - beg
+
+def main() -> int:
+    if os.getuid():
+        p = sys.argv[0].rpartition('/')[2]
+        sys.stderr.write(f'{p}: must be root\n')
+        return 1
+
+    fd = os.open('/proc/iomem', 0)
+    recs = []
+
+    for line in os.read(fd, 1 << 20).decode().splitlines():
+        left, _, name = line.partition(' : ')
+        beg, end = [int(x, 16) for x in left.split('-')]
+        recs.append(R(left.count(' '), beg, end, name))
+
+    _green = '\033[32;1m{}\033[m'
+    o = sys.stdout
+
+    for r in recs:
+        addrs = [f'{r.beg:0>10x}', f'{r.end:0>10x}']
+        for i, a in enumerate(addrs):
+            addrs[i] = f'{a[:-8]}{_green.format(a[-8:-6])}{a[-6:]}'
+
+        o.write(
+            f'{'-'.join(addrs)} {r.size >> 20:>6} MB {r.size >> 10:>9} kB '
+            f'{r.indent * " "}{r.name}\n')
+
+    return 0
+
+if __name__ == '__main__':
+    raise SystemExit(main())
