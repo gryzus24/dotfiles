@@ -106,7 +106,6 @@ alias diff='diff --color=auto'
 alias egrep='grep --color=auto -E'
 alias fgrep='grep --color=auto -F'
 alias grep='grep --color=auto'
-alias ip='ip -color=auto'
 
 # utils
 alias ls='ls --color=auto --time-style=long-iso -N'
@@ -159,6 +158,10 @@ wmem() {
     local t
     t="a = tonumber('$1'); if a == nil then io.write(0.5) else io.write(a) end"
     watch -n "$(luajit -e "$t")" 'grep "Buffers\|Dirty\|Writeback" /proc/meminfo'
+}
+
+iostat-yx() {
+    iostat --dec=1 --human -yx "$@"
 }
 
 ## Completions
