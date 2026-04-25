@@ -1,18 +1,19 @@
-require('nvim-treesitter.configs').setup({
-    ensure_installed = {'c', 'cpp', 'python', 'zig'},
-    highlight = {
-    	enable = true,
-    },
-    indent = {
-        enable = false,
-    },
-    incremental_selection = {
-        enable = true,
-        keymaps = {
-          init_selection = '<C-n>',
-          node_incremental = '<C-n>',
-          scope_incremental = '<C-s>',
-          node_decremental = '<C-p>',
-        },
-    },
+local langs = {
+    'bash',
+    'c',
+    'cpp',
+    'go',
+    'python',
+    'zig'
+}
+require('nvim-treesitter').install(langs):wait(15000)
+
+vim.api.nvim_create_autocmd('FileType', {
+    callback = function(ev)
+        local lang = vim.treesitter.language.get_lang(ev.match)
+        if vim.treesitter.language.add(lang) then
+            vim.bo.indentexpr = 'v:lua.require"nvim-treesitter".indentexpr()'
+            vim.treesitter.start()
+        end
+    end,
 })

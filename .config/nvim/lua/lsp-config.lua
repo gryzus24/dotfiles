@@ -1,7 +1,19 @@
-vim.lsp.set_log_level('OFF')
+vim.lsp.log.set_level('OFF')
 vim.diagnostic.config({signs = false})
 
--- local cfg = vim.lsp.config()
+vim.lsp.config('*', {
+  capabilities = {
+    textDocument = {
+      completion = {
+        completionItem = {
+          -- What a horrible, enabled-by-default feature...
+          snippetSupport = false
+        }
+      }
+    }
+  }
+})
+
 vim.lsp.enable({'clangd', 'gopls', 'pyright', 'ts_ls', 'zls'})
 
 vim.api.nvim_create_autocmd('BufWritePre',{

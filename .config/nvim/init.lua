@@ -23,20 +23,6 @@ set.wildignorecase = true
 set.path = '**'
 set.grepprg = 'git grep -n --column'
 
-set.breakindent = true
-set.breakindentopt = 'sbr'
-set.completeopt = {'menu', 'menuone', 'popup'}
-set.cursorlineopt = 'number'
-set.diffopt = {
-    'internal',
-    'filler',
-    'closeoff',
-    'iwhite',
-    'icase',
-    'algorithm:minimal',
-}
-set.formatoptions = set.formatoptions + 'n'
-
 function tfeedkeys(s)
     w = vim.api.nvim_replace_termcodes(s, true, false, true)
     vim.api.nvim_feedkeys(w, 'n', false)
@@ -175,17 +161,24 @@ vim.keymap.set('t', '<c-j>', '<c-\\><c-n>')
 set.rtp:prepend(vim.fn.stdpath('data') .. '/lazy/lazy.nvim')
 require('lazy').setup({
     spec = {
-        {'neovim/nvim-lspconfig'},
+        {
+            'neovim/nvim-lspconfig'
+        },
         {
             'nvim-telescope/telescope-fzf-native.nvim',
             build = 'make',
         },
         {
             'nvim-telescope/telescope.nvim',
-            version = '*',
+            version = 'v0.2.2',
             dependencies = {'nvim-lua/plenary.nvim'},
         },
-        {'nvim-treesitter/nvim-treesitter'},
+        {
+            'nvim-treesitter/nvim-treesitter',
+            branch = 'main',
+            build = ':TSUpdate',
+            lazy = false,
+        },
   },
   checker = {enabled = false},
 })
@@ -299,9 +292,11 @@ function ccolors()
 
     set_hl(0, 'Whitespace',            {bg = ws})
     set_hl(0, 'ColorColumn',           {link = 'Whitespace'})
-    set_hl(0, 'CurSearch',             {fg = 'White', bg = 'Brown'})
     set_hl(0, 'Comment',               {fg = ign, italic = true})
     set_hl(0, 'LineNr',                {fg = ign})
+
+    set_hl(0, 'IncSearch',             {fg = 'White', bg = 'Brown'})
+    set_hl(0, 'Search',                {fg = 'White', bg = '#374a44'})
 
     set_hl(0, '@lsp.type.class',       {fg = '#ec7bbe', bold = true, italic = true});
     set_hl(0, '@lsp.type.enumMember',  {});
@@ -321,7 +316,7 @@ vim.api.nvim_create_augroup('YankHighlight', {clear = true})
 vim.api.nvim_create_autocmd('TextYankPost', {
     group = 'YankHighlight',
     callback = function()
-        vim.hl.on_yank({higroup = 'IncSearch', timeout = 160})
+        vim.hl.on_yank({higroup = 'Search', timeout = 160})
     end
 })
 
