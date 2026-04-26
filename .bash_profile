@@ -2,14 +2,14 @@
 # ~/.bash_profile
 #
 
-[[ -d "$HOME/.local/bin" ]] && PATH="$HOME/.local/bin:$PATH"
-[[ -d "$HOME/bin" ]] && PATH="$HOME/bin:$PATH"
+[[ -d ~/.local/bin ]] && PATH="$HOME/.local/bin:$PATH"
+[[ -d ~/bin ]] && PATH="$HOME/bin:$PATH"
 
 # In case some program does not fall back on the default values.
-export XDG_CACHE_HOME="$HOME/.cache"
-export XDG_CONFIG_HOME="$HOME/.config"
-export XDG_DATA_HOME="$HOME/.local/share"
-export XDG_STATE_HOME="$HOME/.local/state"
+export XDG_CACHE_HOME=~/.cache
+export XDG_CONFIG_HOME=~/.config
+export XDG_DATA_HOME=~/.local/share
+export XDG_STATE_HOME=~/.local/state
 
 if type -p nvim >/dev/null; then
     export EDITOR=nvim
@@ -32,31 +32,20 @@ export PYTHON_BASIC_REPL=1
 if type -p alacritty >/dev/null; then
     export TERMINAL=alacritty
 else
-    # WM specific, set later.
-    export TERMINAL=
+    # Compositor/WM specific, set later.
+    export TERMINAL
 fi
 
 export _PLATFORM=desktop
+
+[[ -f ~/.bashrc ]] && . ~/.bashrc
+
 if type -p sway >/dev/null; then
-    export _WM=sway
+    TERMINAL="${TERMINAL:-foot}"
+    [[ "$XDG_VTNR" == 1 && -z "$WAYLAND_DISPLAY" ]] && exec run-sway
 elif type -p i3 >/dev/null; then
-    export _WM=i3
+    TERMINAL="${TERMINAL:-xterm}"
+    [[ "$XDG_VTNR" == 1 && -z "$DISPLAY" ]] && exec startx
 else
-    export _WM=unknown
+    echo 'ERROR: Compositor/WM not found' >&2
 fi
-
-[[ -f "$HOME/.bashrc" ]] && . "$HOME/.bashrc"
-
-case "$_WM" in
-    sway)
-        [[ -z "$TERMINAL" ]] && export TERMINAL=foot
-        [[ "$XDG_VTNR" == 1 && -z "$WAYLAND_DISPLAY" ]] && exec run-sway
-        ;;
-    i3)
-        [[ -z "$TERMINAL" ]] && export TERMINAL=xterm
-        [[ "$XDG_VTNR" == 1 && -z "$DISPLAY" ]] && exec startx
-        ;;
-    *)
-        echo "ERROR: _WM=$_WM" >&2
-        ;;
-esac
