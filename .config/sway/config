@@ -8,7 +8,7 @@ xwayland disable
 primary_selection disable
 
 set $mod Mod1
-set $tborder 1
+set $tborder 2
 set $fborder 5
 set $cursor_size 16
 set $cursor_theme retrosmart-xcursor-white
@@ -65,7 +65,7 @@ input 1133:50498:Logitech_Wireless_Receiver_Mouse {
 }
 input 1386:768:Wacom_Bamboo_One_S_Pen {
   tool_mode pen absolute
-  map_to_output DP-2
+  map_to_output DP-1
   map_from_region 0x0mm 70x40mm
 }
 
@@ -140,10 +140,7 @@ bindsym $mod+t                 exec systemd-run --scope --slice-inherit \
 
 ## == Scripts =================================================================
 
-bindsym $mod+c                 exec --no-startup-id cliphist list \
-                                    | fuzzel --dmenu -p 'copy> ' \
-                                    | cliphist decode \
-                                    | wl-copy
+bindsym $mod+c                 exec --no-startup-id cliphist-wl-copy
 bindsym $mod+Shift+m           exec --no-startup-id pactl-next-sink
 
 bindsym XF86AudioLowerVolume   exec --no-startup-id pamixer -d 5
@@ -200,7 +197,7 @@ bindsym $mod+Control+Shift+l move workspace to output right
 
 ## == Looks ===================================================================
 
-font pango:Terminus 10
+font Terminus 12
 
 # class                 border  bg      text   indicator child_border
 client.focused          $dxt    $lgc    $txt    $txt     $dxt
@@ -230,6 +227,7 @@ bar {
 
 # == Startup ==================================================================
 
+exec gsettings set org.gnome.desktop.interface cursor-theme $cursor_theme
 exec gsettings set org.gnome.desktop.interface cursor-size $cursor_size
 exec gsettings set org.gnome.desktop.interface color-scheme prefer-dark
 
