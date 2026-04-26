@@ -1,0 +1,6 @@
+#!/bin/dash
+
+c="$(cliphist list | fuzzel --dmenu -p 'copy> ')"
+if [ -n "$c" ]; then
+    cliphist decode "$c" | wl-copy
+fi

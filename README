@@ -137,6 +137,12 @@ Scripts in ~/bin listed alphabetically
   Dependencies
     * python (3.9+)
 
+- cliphist-wl-copy (wayland)
+    Pick an entry from the clipboard history... and copy it!
+  Dependencies
+    * dash (shell)
+    * cliphist, fuzzel, wl-copy
+
 - colorpicker (wayland)
     Pick the top-left pixel color of the selection, copy it to clipboard
     and print on stdout.
