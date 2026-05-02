@@ -164,6 +164,11 @@ iostat-yx() {
     iostat --dec=1 --human -yx "$@"
 }
 
+xz-dict() {
+    local dict="$1"; shift
+    xz --lzma2=preset=6,dict="$dict" "$@"
+}
+
 ## Completions
 # `complete -c ...`          complete commands
 # `complete -F _command ...` complete commands and directories in $PWD
