@@ -59,27 +59,31 @@ fn write(writer: *std.Io.Writer, s: []const u8) void {
     _ = writer.write(s) catch {};
 }
 
-fn isFile(path: [*:0]const u8) bool {
-    var stat: std.os.linux.Stat = undefined;
-    if (std.os.linux.lstat(path, &stat) == 0)
-        return std.os.linux.S.ISREG(stat.mode);
-    return false;
+fn isFile_lstat_amd64(path: [*:0]const u8) bool {
+    var statbuf: [144]u8 = undefined;
+    const ret = std.os.linux.syscall2(
+        std.os.linux.SYS.lstat,
+        @intFromPtr(path),
+        @intFromPtr(&statbuf),
+    );
+    return (ret == 0 and
+        std.c.S.ISREG(std.mem.bytesAsValue(std.c.mode_t, statbuf[24..28]).*));
 }
 
-pub fn main() void {
-    errdefer std.posix.exit(1);
+pub fn main(init: std.process.Init) void {
+    errdefer std.process.exit(1);
 
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    const alloc = arena.allocator();
+    const alloc = init.arena.allocator();
+    const io = init.io;
 
     var out_buf: [1 << 16]u8 = undefined;
-    var writer = std.fs.File.stdout().writer(&out_buf);
+    var writer = std.Io.File.stdout().writer(io, &out_buf);
     const out = &writer.interface;
     defer out.flush() catch {};
 
     var f_a = false;
     var f_c = false;
-    for (std.os.argv[1..]) |arg| {
+    for (init.minimal.args.vector[1..]) |arg| {
         var i: usize = 0;
         while (arg[i] != 0) : (i += 1) switch (arg[i]) {
             'a' => f_a = true,
@@ -89,14 +93,14 @@ pub fn main() void {
         };
     }
 
-    var in = std.fs.File.stdin().reader(&.{});
+    var in = std.Io.File.stdin().reader(io, &.{});
     const reader = &in.interface;
 
     var data: std.ArrayList(u8) = .empty;
     try reader.appendRemainingUnlimited(alloc, &data);
     try data.append(alloc, '\n');
 
-    var dir_count = std.StringArrayHashMap(u32).init(alloc);
+    var dir_count: std.StringArrayHashMapUnmanaged(u32) = .empty;
 
     var last: usize = 0;
     var it: IndexIterator(u8, '\n') = .init(data.items);
@@ -105,9 +109,9 @@ pub fn main() void {
         last = nl + 1;
         data.items[nl] = 0;
 
-        if (isFile(line.ptr[0..line.len :0])) {
+        if (isFile_lstat_amd64(line.ptr[0..line.len :0])) {
             if (std.fs.path.dirname(line)) |dir| {
-                const entry = try dir_count.getOrPutValue(dir, 1);
+                const entry = try dir_count.getOrPutValue(alloc, dir, 1);
                 if (entry.found_existing)
                     entry.value_ptr.* += 1;
             }
