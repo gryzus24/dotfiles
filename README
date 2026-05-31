@@ -313,6 +313,14 @@ Scripts in ~/bin listed alphabetically
   Dependencies
     * dash (shell)
 
+- sway-focus-or-run (see source)
+    Focus an already open container or launch a new instance of it.
+  Usage
+    sway-focus-or-run <command>
+  Dependencies
+    * dash (shell)
+    * swaymsg
+
 - sway-prop
     Get properties of a top-level by clicking on it.
   Options
