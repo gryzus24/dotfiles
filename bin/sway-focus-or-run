@@ -1,0 +1,9 @@
+#!/bin/dash
+
+set -u
+
+if pidof -q "$1"; then
+    swaymsg "[app_id=(?i)$1] focus"
+else
+    exec "$1"
+fi
