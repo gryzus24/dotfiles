@@ -8,26 +8,13 @@ xwayland disable
 primary_selection disable
 
 set $mod Mod1
-set $tborder 2
-set $fborder 5
-set $cursor_size 16
-set $cursor_theme retrosmart-xcursor-white
-set $igap 10
-set $ogap -10
 
-#set $sgc #000000
-#set $mgc #182018
-#set $lgc #405040
-#set $qgc #667666
-#set $dxt #9eae9e
-#set $txt #ffffff
-
-#set $sgc #000000
-#set $mgc #282418
-#set $lgc #605840
-#set $qgc #867c66
-#set $dxt #bea49e
-#set $txt #ffffff
+set $border_floating 5
+set $border_tiling 2
+set $cursor_size 36
+set $cursor_theme default
+set $gap_inner 10
+set $gap_outer -10
 
 set $sgc #000000
 set $mgc #282418
@@ -36,10 +23,10 @@ set $qgc #767266
 set $dxt #aeab9e
 set $txt #ffffff
 
-gaps inner $igap
-gaps outer $ogap
+gaps inner $gap_inner
+gaps outer $gap_outer
 
-default_border pixel $tborder
+default_border pixel $border_tiling
 focus_wrapping no
 hide_edge_borders smart_no_gaps
 smart_gaps yes
@@ -53,7 +40,7 @@ seat * {
 }
 
 input * {
-  xkb_layout pl
+  xkb_layout pl(basic)
   xkb_options caps:escape
   repeat_delay 160
   repeat_rate 60
@@ -111,13 +98,13 @@ bindsym Control+Shift+k        resize shrink height 40 px
 bindsym Control+Shift+l        resize shrink width 40 px
 bindsym Control+Shift+comma    gaps inner all minus 2
 bindsym Control+Shift+period   gaps inner all plus 2
-bindsym Control+Shift+slash    gaps inner all toggle $igap; \
-                               gaps outer all toggle $ogap
+bindsym Control+Shift+slash    gaps inner all toggle $gap_inner; \
+                               gaps outer all toggle $gap_outer
 
 bindsym $mod+f                 fullscreen toggle
 bindsym $mod+Shift+space       floating toggle; \
-                               [floating] border pixel $fborder; \
-                               [tiling] border pixel $tborder
+                               [floating] border pixel $border_floating; \
+                               [tiling] border pixel $border_tiling
 
 bindsym $mod+m                 bar mode toggle
 bindsym $mod+Shift+c           reload
@@ -131,8 +118,8 @@ bindsym $mod+Shift+minus       move scratchpad
 
 bindsym $mod+Return            exec systemd-run --scope --slice-inherit --no-block kitty
 bindsym $mod+Shift+e           exec thunar
-bindsym $mod+Shift+t           exec thunderbird
-bindsym $mod+b                 exec $BROWSER
+bindsym $mod+Shift+t           exec sway-focus-or-run thunderbird
+bindsym $mod+b                 exec sway-focus-or-run $BROWSER
 bindsym $mod+d                 exec fuzzel
 bindsym $mod+t                 exec systemd-run --scope --slice-inherit \
                                     -u "term-$(awk '/processes/{print sprintf("%x", $2)}' /proc/stat)" \
@@ -142,6 +129,9 @@ bindsym $mod+t                 exec systemd-run --scope --slice-inherit \
 
 bindsym $mod+c                 exec --no-startup-id cliphist-wl-copy
 bindsym $mod+Shift+m           exec --no-startup-id pactl-next-sink
+
+bindsym $mod+F2                exec --no-startup-id night
+bindsym $mod+F3                exec --no-startup-id day
 
 bindsym XF86AudioLowerVolume   exec --no-startup-id pamixer -d 5
 bindsym XF86AudioMute          exec --no-startup-id pamixer -t
