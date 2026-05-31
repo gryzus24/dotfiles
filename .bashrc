@@ -6,7 +6,7 @@
 [[ $- != *i* ]] && return
 
 HISTCONTROL=ignoredups:erasedups
-HISTSIZE=100000
+HISTSIZE=900000
 
 # Sets current branch name to CGB on success. The caller is responsible
 # for clearing CGB. This function doesn't fork and is thus the ultimate
