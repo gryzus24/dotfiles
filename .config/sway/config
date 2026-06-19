@@ -16,12 +16,15 @@ set $cursor_theme default
 set $gap_inner 10
 set $gap_outer -10
 
-set $sgc #000000
-set $mgc #282418
-set $lgc #504c40
-set $qgc #767266
-set $dxt #aeab9e
-set $txt #ffffff
+set $C1 #021414
+set $C2 #0e3231
+set $C3 #264442
+set $C4 #4a4f46
+set $C5 #7f6040
+set $C6 #c88b21
+
+set $B1 #000000
+set $BX #aeab9e
 
 gaps inner $gap_inner
 gaps outer $gap_outer
@@ -57,9 +60,10 @@ input 1386:768:Wacom_Bamboo_One_S_Pen {
 }
 
 output * {
-  bg $mgc solid_color
   adaptive_sync yes
   allow_tearing yes
+  bg $C2 solid_color
+  max_render_time 2
   subpixel none
 }
 
@@ -189,13 +193,13 @@ bindsym $mod+Control+Shift+l move workspace to output right
 
 font Terminus 12
 
-# class                 border  bg      text   indicator child_border
-client.focused          $dxt    $lgc    $txt    $txt     $dxt
-client.focused_inactive $lgc    $mgc    $dxt    $lgc     #668866
-client.unfocused        $sgc    $sgc    $qgc    $sgc     $mgc
-client.urgent           #2f343a #900000 $txt    #900000  #900000
-client.placeholder      #000000 #0c0c0c #ffffff #000000  #0c0c0c
-client.background       $sgc
+# class                 border  bg      text    indicator child_border
+client.focused          $C5     $C2     $BX     $C6       $C5
+client.focused_inactive $C3     $C1     $C5     $C3       $C3
+client.unfocused        $C1     $C1     $C4     $C1       $C1
+client.urgent           #2f343a #900000 $BX     #900000   #900000
+client.placeholder      #000000 #0c0c0c #ffffff #000000   #0c0c0c
+client.background       $C1
 
 bar {
   status_command ziew c "$HOME/.config/ziew/$_PLATFORM.config"
@@ -203,15 +207,15 @@ bar {
   tray_padding 0
   separator_symbol " | "
   colors {
-    background $sgc
-    statusline $dxt
-    separator $lgc
+    background $B1
+    statusline $BX
+    separator  $C3
     #                  border  bg      text
-    focused_workspace  $sgc    $lgc    $txt
-    active_workspace   $lgc    $mgc    $dxt
-    inactive_workspace $sgc    $sgc    $qgc
-    urgent_workspace   #2f343a #900000 $txt
-    binding_mode       #2f343a #900000 $txt
+    focused_workspace  $C4     $C3     $C6
+    active_workspace   $C2     $C2     $C5
+    inactive_workspace $B1     $B1     $C4
+    urgent_workspace   #2f343a #900000 $C6
+    binding_mode       #2f343a #900000 $C6
   }
 }
 
@@ -227,5 +231,3 @@ exec swayidle -w \
   timeout 300 'swaymsg "output * power off"' \
        resume 'swaymsg "output * power on"' \
   before-sleep 'swaylock -f -c 000000'
-
-exec_always systemctl --user start sway-session.target
