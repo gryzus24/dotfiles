@@ -12,7 +12,7 @@ vim.api.nvim_create_autocmd('FileType', {
     callback = function(ev)
         local lang = vim.treesitter.language.get_lang(ev.match)
         if vim.treesitter.language.add(lang) then
-            vim.bo.indentexpr = 'v:lua.require"nvim-treesitter".indentexpr()'
+            -- vim.bo.indentexpr = 'v:lua.require"nvim-treesitter".indentexpr()'
             vim.treesitter.start()
         end
     end,

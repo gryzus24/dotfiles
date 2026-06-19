@@ -56,5 +56,11 @@ vim.api.nvim_create_autocmd('LspAttach', {
     vim.keymap.set('n', '<space>f',  function()
       vim.lsp.buf.format({async = true})
     end, opts)
+    vim.keymap.set({'n', 'v'}, '<c-n>', function()
+        vim.lsp.buf.selection_range(1)
+    end, opts)
+    vim.keymap.set({'n', 'v'}, '<c-p>', function()
+        vim.lsp.buf.selection_range(-1)
+    end, opts)
   end,
 })
