@@ -120,14 +120,14 @@ bindsym $mod+Shift+minus       move scratchpad
 
 ## == Programs ================================================================
 
-bindsym $mod+Return            exec systemd-run --scope --slice-inherit --no-block kitty
+bindsym $mod+Return            exec systemd-run --scope --slice-inherit kitty
 bindsym $mod+Shift+e           exec thunar
 bindsym $mod+Shift+t           exec sway-focus-or-run thunderbird
 bindsym $mod+b                 exec sway-focus-or-run $BROWSER
 bindsym $mod+d                 exec fuzzel
 bindsym $mod+t                 exec systemd-run --scope --slice-inherit \
                                     -u "term-$(awk '/processes/{print sprintf("%x", $2)}' /proc/stat)" \
-                                    --no-block $TERMINAL
+                                    $TERMINAL
 
 ## == Scripts =================================================================
 
