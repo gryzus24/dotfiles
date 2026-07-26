@@ -97,10 +97,11 @@ Scripts in ~/bin listed alphabetically
     In another shell (outside the isolated cgroup), run:
       # perf stat -e context-switches,page-faults,instructions:u -aC 3 -I 1000
 
-    If you happen to notice a lot of context-switches when moving the
+    If you happen to notice a lot of context switches when moving the
     mouse or when there are a lot of on-screen changes, you probably
     have GPU IRQs assigned to the same CPU as the isolated cgroup is
-    allowed to use. If so, you can reroute the offending IRQs:
+    allowed to use. If so, you can reroute the offending IRQs by using
+    my irq-mon program, or doing it in the shell:
 
       First, observe which IRQs are assigned to the last CPU and note
       the IRQ number of the IRQ you want to reroute:
@@ -145,7 +146,7 @@ Scripts in ~/bin listed alphabetically
 
 - colorpicker (wayland)
     Pick the top-left pixel color of the selection, copy it to clipboard
-    and print on stdout.
+    and print to stdout.
   Dependencies
     * dash (shell)
     * grim, imagemagick, slurp, wl-copy
@@ -170,7 +171,7 @@ Scripts in ~/bin listed alphabetically
 
 - dirg
     Group file paths by the directories they belong to. File paths
-    should be newline delimited and provided as standard input.
+    should be newline delimited and provided as stdin.
   Options
     a  sort alphabetically
     c  show file count per directory
@@ -214,6 +215,12 @@ Scripts in ~/bin listed alphabetically
     * fzf, python
     * xclip (on Xorg), wl-copy (on Wayland)
 
+- iomem
+    Read /proc/iomem and present the output in a more human-readable,
+    tabular format.
+  Dependencies
+    * python (3.7+)
+
 - irq-mon
     Interactive /proc/interrupts monitoring tool. Summary is calculated
     from the visible entries. Update every <n> seconds or 1s if
@@ -227,7 +234,7 @@ Scripts in ~/bin listed alphabetically
 
 - lscat
     Recursively iterate over all files in the current working directory,
-    print their file path and use the cat command on them.
+    print their paths and use the cat command on them.
   Dependencies
     * dash (shell)
 
