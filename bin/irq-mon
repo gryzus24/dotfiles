@@ -84,15 +84,13 @@ def mvaddstr(win: curses.window, y: int, x: int, s: str, attr: int = 0) -> bool:
     except curses.error: return True
     return False
 
-def addstr(win: curses.window, s: str, attr: int) -> bool:
-    try: win.addstr(s, attr)
-    except curses.error: return True
-    return False
-
 def mvchgat(win: curses.window, y: int, x: int, n: int, attr: int) -> bool:
     try: win.chgat(y, x, n, attr)
     except curses.error: return True
     return False
+
+def mvchgator(win: curses.window, y: int, x: int, n: int, attr: int) -> bool:
+    return mvchgat(win, y, x, n, attr | win.inch(y, x) & curses.A_ATTRIBUTES)
 
 ## == DATA ====================================================================
 
@@ -147,6 +145,8 @@ STATE_TOTAL = 2
 STATE_NR    = 3
 
 class Layout:
+    DEBUG = False
+
     BTN_HIDE_DESC = STATE_NR
     BTN_FILTER    = STATE_NR + 1
 
@@ -155,16 +155,14 @@ class Layout:
         _left_w      = 5 + cell_width + 1
         _main_w      = curses.COLS - _left_w
         _header_h    = 1
-        _footer_h    = 1
-        _summary_h   = 1
-        _main_h      = curses.LINES - _header_h - _footer_h - _summary_h
+        _footer_h    = 2
+        _main_h      = curses.LINES - _header_h - _footer_h
         _edit        = '[EDIT]' if root else '[EDIT(need root)]'
         self.col     = Column(cell_width)
         self.left    = Dim(h=curses.LINES,    w=_left_w)
         self.header  = Dim(x=_left_w,         w=_main_w)
         self.main    = Dim(y=_header_h,       x=_left_w,    h=_main_h, w=_main_w)
         self.footer  = Dim(y=self.main.y_h,   h=_footer_h,  w=curses.COLS)
-        self.summary = Dim(y=self.footer.y_h, h=_summary_h, w=curses.COLS)
         self.buttons = [
             Button(self.footer.y, self.footer.x + 9, '[DIFF]', STATE_DIFF),
             Button(self.footer.y, self.footer.x + 15, _edit, STATE_EDIT),
@@ -176,7 +174,7 @@ class Layout:
 class Format:
     __slots__ = (
         'head_left', 'head_main', 'head_desc', 'left', 'main', 'main_attrs',
-        'descs', 'desc_width_max', 'footer', 'summary_left', 'summary_main')
+        'descs', 'desc_width_max', 'footer_bar', 'footer_sum', 'footer_partial_sums')
     def __init__(self) -> None:
         self.head_left = self.head_main = self.head_desc = ''
         self.left: list[str] = []
@@ -184,8 +182,7 @@ class Format:
         self.main_attrs: list[list[tuple[int, int]]] = []
         self.descs: list[tuple[str, int]] = []
         self.desc_width_max = 0
-        self.footer = ''
-        self.summary_left = self.summary_main = ''
+        self.footer_bar = self.footer_sum = self.footer_partial_sums = ''
 
 ## == IMPLEMENTATION ==========================================================
 
@@ -283,14 +280,14 @@ def format(
                 cpu_row.append(f'{dtoa(d):>{cell}}')
             elif state == STATE_TOTAL:
                 t = curr.cpus[j]
-                if t: cpu_row.append(f'{t:>{cell}}')
+                if t: cpu_row.append(f'{dtoa(t):>{cell}}')
                 else: cpu_row.append(' ' * cell)
             else:
                 bit = 1 << j
                 if curr.aff & bit:
-                    if d: b = ['~'] * 4
-                    else: b = ['_'] * 4
-                else: b = [' '] * 4
+                    if d: b = ['~'] * cell
+                    else: b = ['_'] * cell
+                else: b = [' '] * cell
                 e_attr = h_attr = 0
                 if curr.eff & bit:
                     b[1] = 'E'; e_attr = curses.color_pair(2)
@@ -305,7 +302,7 @@ def format(
                 stat.seen = True
 
         _seen = '~' if stat.seen else ' '
-        fmt.left.append(f'{_seen}{curr.nr:3} {dtoa(stat.avg()):>{cell}}|')
+        fmt.left.append(f'{_seen}{curr.nr:4}{dtoa(stat.avg()):>{cell}}|')
         fmt.main.append((lay.col.sep * ' ').join(cpu_row) + ' ')
         fmt.main_attrs.append(cpu_row_attr)
         if len(desc := f'|{curr.desc}') > fmt.desc_width_max:
@@ -319,10 +316,9 @@ def format(
     _state_btns = '―' * 9 + ''.join([lay.buttons[i].text for i in range(3)])
     _hint = f'{lay.buttons[3].text}―{lay.buttons[4].text}―'
     _pad = (lay.footer.w - len(_state_btns) - len(_hint)) * '―'
-    fmt.footer = _state_btns + _pad + _hint
-
-    fmt.summary_left = f' SUM {dtoa(sum(cols_sum)):>{cell}} '
-    fmt.summary_main = ' '.join([f'{dtoa(x):>{cell}}' for x in cols_sum])
+    fmt.footer_bar = _state_btns + _pad + _hint
+    fmt.footer_sum = f' SUM {dtoa(sum(cols_sum)):>{cell}} '
+    fmt.footer_partial_sums = ' '.join([f'{dtoa(x):>{cell}}' for x in cols_sum])
     return irq_indices, fmt
 
 def draw(
@@ -340,27 +336,28 @@ def draw(
     if fmt.desc_width_max >= lay.main.w:
         hide_desc = True
     desc_x = lay.main.x_w - (not hide_desc) * fmt.desc_width_max
-    main_w = desc_x - lay.main.x
+    main_visible_w = desc_x - lay.main.x
 
     mvaddstr(win, lay.header.y, lay.left.x, fmt.head_left, curses.A_BOLD)
-    mvaddstr(win, lay.header.y, lay.main.x, fmt.head_main[hscroll:hscroll + main_w], curses.A_BOLD)
+    mvaddstr(win, lay.header.y, lay.main.x,
+        fmt.head_main[hscroll:hscroll + main_visible_w], curses.A_BOLD)
     mvaddstr(win, lay.header.y, desc_x, fmt.head_desc, curses.A_BOLD)
 
     y = lay.main.y
     for i in range(scroll, min(scroll + lay.main.h, len(fmt.main))):
         mvaddstr(win, y, lay.left.x, fmt.left[i])
-        mvaddstr(win, y, lay.main.x, fmt.main[i][hscroll:hscroll + main_w])
+        mvaddstr(win, y, lay.main.x, fmt.main[i][hscroll:hscroll + main_visible_w])
         mvaddstr(win, y, desc_x, *fmt.descs[i])
 
         xn = lay.main.x - hscroll + 1
         for j, attrs in enumerate(fmt.main_attrs[i]):
             for x, attr in enumerate(attrs, xn + cpu_column_offset[j]):
                 if x < lay.main.x: continue
-                if x >= lay.main.x + main_w: break
+                if x >= lay.main.x + main_visible_w: break
                 if attr: mvchgat(win, y, x, 1, attr)
         y += 1
 
-    mvaddstr(win, y, lay.footer.x, fmt.footer)
+    mvaddstr(win, y, lay.footer.x, fmt.footer_bar)
     if len(fmt.main) - scroll > lay.main.h:
         _scroll_hint = '[MORE j k]―'
     else:
@@ -370,12 +367,13 @@ def draw(
     btn = lay.buttons[state].dim; btn_y = y
     mvchgat(win, y, btn.x, btn.w, curses.color_pair(3) | curses.A_REVERSE | curses.A_BOLD)
 
-    mvaddstr(win, y + 1, lay.left.x, fmt.summary_left, curses.A_BOLD)
-    mvaddstr(win, y + 1, lay.left.x_w, fmt.summary_main[hscroll:hscroll + main_w], curses.A_BOLD)
+    mvaddstr(win, y + 1, lay.left.x, fmt.footer_sum, curses.A_BOLD)
+    mvaddstr(win, y + 1, lay.left.x_w,
+        fmt.footer_partial_sums[hscroll:hscroll + lay.main.w], curses.A_BOLD)
 
     reg = Dim(
         h=y - lay.main.y,
-        w=min(main_w, len(fmt.head_main) - hscroll))
+        w=min(main_visible_w, len(fmt.head_main) - hscroll))
     yn, xn = yx_norm(*cursor, lay.main)
     if yx_in_dim(yn, xn, reg):
         y = lay.main.y + yn
@@ -396,9 +394,16 @@ def draw(
         mvchgat(win, y, x, w, curses.A_STANDOUT)
 
         mvchgat(win, y, lay.left.x, lay.left.w - 1, curses.A_UNDERLINE)
-        mvchgat(win, y, desc_x + 1, fmt.desc_width_max, curses.A_UNDERLINE)
+        mvchgator(win, y, desc_x + 1, fmt.desc_width_max, curses.A_UNDERLINE)
 
-    return max(len(fmt.head_main) - main_w , 0), reg, btn_y
+    if Layout.DEBUG:
+        for i, l in enumerate((lay.left, lay.header, lay.main, lay.footer,
+                              *[x.dim for x in lay.buttons]), 1):
+            mvaddstr(win, l.y, l.x, str(i))
+            for j in range(l.h):
+                mvchgat(win, l.y + j, l.x, l.w, curses.color_pair(min(i, 5)))
+
+    return max(len(fmt.head_main) - main_visible_w , 0), reg, btn_y
 
 def filtring_toggle(enable: bool) -> tuple[bool, bool]:
     enable = not enable
@@ -416,6 +421,8 @@ def filtr_draw(win: curses.window, filtr: str) -> None:
 
 def state_set(state: int) -> tuple[int, int, bool]:
     return state, 0, True
+def state_cell_width(state: int) -> int:
+    return 4 + (state == STATE_TOTAL) * 3
 
 key_up                   = lambda k: k in {b'k', b'K', b'KEY_UP'}
 key_down                 = lambda k: k in {b'j', b'J', b'KEY_DOWN'}
@@ -459,17 +466,17 @@ def c_main(win: curses.window) -> int:
     refresh = reformat = False
     refresh_last = 0
 
-    cpu_column_offset = []
-    fmt = Format()
-    irq_indices: list[int] = []
-    layout = Layout(4, root=root)
-    stats: dict[str, IrqStat] = {}
-
     cursor: YX = (0, 0)
     filtr = ''
     filtring = hide_desc = False
     scroll = hscroll = 0
     state = STATE_DIFF
+
+    cpu_column_offset = []
+    fmt = Format()
+    irq_indices: list[int] = []
+    layout = Layout(state_cell_width(state), root=root)
+    stats: dict[str, IrqStat] = {}
 
     while True:
         now = time.monotonic_ns()
@@ -497,7 +504,7 @@ def c_main(win: curses.window) -> int:
             reformat = True
 
         if reformat:
-            layout = Layout(7 if state == STATE_TOTAL else 4, root=root)
+            layout = Layout(state_cell_width(state), root=root)
 
             cpu_column_offset = []; mask = cpus.mask
             while mask:
@@ -551,7 +558,9 @@ def c_main(win: curses.window) -> int:
                                     break
                             else:
                                 cpu_bit = 1 << (cpus.mask.bit_length() - 1)
-                            irq = irqs_curr[irq_indices[yn]]
+                            assert scroll + yn < len(irq_indices), \
+                                f'unreachable: {scroll=} {yn=} {len(irq_indices)=}'
+                            irq = irqs_curr[irq_indices[scroll + yn]]
                             irq.set_affinity(cpu_bit)
                             irq.set_affinity(irq.aff | cpu_bit)
                             refresh = True
@@ -573,7 +582,7 @@ def c_main(win: curses.window) -> int:
             elif filtring:
                 if key_filtr_prompt_typable(key):
                     filtr, scroll, reformat = filtr_push(filtr, key.decode())
-                elif key_backspace(key) :
+                elif key_backspace(key):
                     if filtr:
                         filtr, scroll, reformat = filtr_pop(filtr)
                     else:
