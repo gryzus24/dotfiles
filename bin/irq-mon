@@ -79,18 +79,16 @@ def yx_in_dim(y: int, x: int, dim: Dim) -> bool:
 def yx_norm(y: int, x: int, dim: Dim) -> YX:
     return y - dim.y, x - dim.x
 
-def mvaddstr(win: curses.window, y: int, x: int, s: str, attr: int = 0) -> bool:
+def mvaddstr(win: curses.window, y: int, x: int, s: str, attr: int = 0) -> None:
     try: win.addstr(y, x, s, attr) if attr else win.addstr(y, x, s)
-    except curses.error: return True
-    return False
+    except curses.error: pass
 
-def mvchgat(win: curses.window, y: int, x: int, n: int, attr: int) -> bool:
+def mvchgat(win: curses.window, y: int, x: int, n: int, attr: int) -> None:
     try: win.chgat(y, x, n, attr)
-    except curses.error: return True
-    return False
+    except curses.error: pass
 
-def mvchgator(win: curses.window, y: int, x: int, n: int, attr: int) -> bool:
-    return mvchgat(win, y, x, n, attr | win.inch(y, x) & curses.A_ATTRIBUTES)
+def mvchgator(win: curses.window, y: int, x: int, n: int, attr: int) -> None:
+    mvchgat(win, y, x, n, attr | win.inch(y, x) & curses.A_ATTRIBUTES)
 
 ## == DATA ====================================================================
 
@@ -150,7 +148,7 @@ class Layout:
     BTN_HIDE_DESC = STATE_NR
     BTN_FILTER    = STATE_NR + 1
 
-    __slots__ = ('col', 'left', 'header', 'main', 'footer', 'summary', 'desc', 'buttons')
+    __slots__ = ('col', 'left', 'header', 'main', 'footer', 'buttons')
     def __init__(self, cell_width: int, *, root: bool) -> None:
         _left_w      = 5 + cell_width + 1
         _main_w      = curses.COLS - _left_w
