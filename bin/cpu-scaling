@@ -43,19 +43,17 @@ def wrap_deduct_green(words: list[str], width: int) -> list[str]:
     lines.append(' '.join(line))
     return lines
 
-class Bundle:
-    __slots__ = ('items', 'seen')
-    def __init__(self) -> None:
-        self.items: list[str] = []
-        self.seen: set[str] = set()
+def mark_unique_list(items: list[str], unique: set[str]) -> list[str]:
+    items = items.copy()
+    if len(unique) == 1:
+        for i, item in enumerate(items):
+            if item in unique:
+                items[i] = f'[{green(item)}]'
+                break
+    return items
 
-    def items_unique_marked(self) -> str:
-        if len(self.seen) == 1:
-            unique_seen = self.seen.copy().pop()
-            return ' '.join(
-                [f'[{green(x)}]' if x == unique_seen else x for x in self.items])
-        else:
-            return ' '.join(self.items)
+def mark_unique(items: list[str], unique: set[str]) -> str:
+    return ' '.join(mark_unique_list(items, unique))
 
 # =============================================================================
 
@@ -76,47 +74,35 @@ def write_cpu_intel_pstate() -> None:
         return
 
     hwp_dynboost =     read_file(CPU_INTEL_PSTATE_PATH + '/hwp_dynamic_boost')
-    max_pct      =     read_file(CPU_INTEL_PSTATE_PATH + '/max_perf_pct')
-    min_pct      =     read_file(CPU_INTEL_PSTATE_PATH + '/min_perf_pct')
-    no_turbo     = int(read_file(CPU_INTEL_PSTATE_PATH + '/no_turbo'))
-    turbo        = str(int(not no_turbo))
+    _max_pct     =     read_file(CPU_INTEL_PSTATE_PATH + '/max_perf_pct')
+    _min_pct     =     read_file(CPU_INTEL_PSTATE_PATH + '/min_perf_pct')
+    _no_turbo    = int(read_file(CPU_INTEL_PSTATE_PATH + '/no_turbo'))
+    turbo        = str(int(not _no_turbo))
     status       =     read_file(CPU_INTEL_PSTATE_PATH + '/status')
-    perf_range   = f'{min_pct} - {max_pct}'
+    perf_range   = f'{_min_pct} - {_max_pct}'
 
-    intel_header = ['HWP DYN. BOOST', 'MIN/MAX PERF %', 'TURBO', 'STATUS']
-    intel_align = [len(x) for x in intel_header]
-    intel = [hwp_dynboost, perf_range, turbo, status]
-    for i, x in enumerate(intel):
-        intel_align[i] = max(intel_align[i], len(x))
+    header = ['HWP DYN. BOOST', 'MIN/MAX PERF %', 'TURBO', 'STATUS']
+    row    = [hwp_dynboost, perf_range, turbo, status]
+    align  = [max(len(header[i]), len(x)) for i, x in enumerate(row)]
 
-    title  = make_title(CPU_INTEL_PSTATE_PATH)
-    header = align_fields(intel_header, intel_align, SEP)
-    row    = align_fields(intel, intel_align, SEP)
-
-    OUT.write(title + '\n')
-    OUT.write(header + '\n')
-    OUT.write(row + '\n')
+    OUT.write(make_title(CPU_INTEL_PSTATE_PATH) + '\n')
+    OUT.write(align_fields(header, align, SEP) + '\n')
+    OUT.write(align_fields(row, align, SEP) + '\n')
 
 def write_cpu_idle() -> None:
     if not os.path.exists(CPU_IDLE_PATH):
         return
 
-    governors = Bundle()
-    governors.seen.add(read_file(CPU_IDLE_PATH + '/current_governor_ro'))
-    governors.items  = read_file(CPU_IDLE_PATH + '/available_governors').split()
-    driver           = read_file(CPU_IDLE_PATH + '/current_driver')
+    gov_avail  = read_file(CPU_IDLE_PATH + '/available_governors').split()
+    gov_active = {read_file(CPU_IDLE_PATH + '/current_governor_ro')}
+    driver     = read_file(CPU_IDLE_PATH + '/current_driver')
 
-    title = make_title(CPU_IDLE_PATH)
-    governors.items_unique_marked()
-
-    OUT.write(title + '\n')
-    OUT.write(f'GOVERNORS = {governors.items_unique_marked()}\n')
+    OUT.write(make_title(CPU_IDLE_PATH) + '\n')
+    OUT.write(f'GOVERNORS = {mark_unique(gov_avail, gov_active)}\n')
     OUT.write(f'DRIVER    = {driver}\n')
 
 def write_cpu_generic(nr_cpus: int) -> None:
     amd = os.path.exists(CPU_PATH + '/amd_pstate')
-    governors = Bundle()
-    epps = Bundle()
 
     rows: list[list[str]] = []
     rows_header = ['CPU', 'GOVERNOR', 'CPU MHz', 'SCALING MHz']
@@ -125,7 +111,9 @@ def write_cpu_generic(nr_cpus: int) -> None:
     rows_header.extend(['EPP', 'EPB'])
     rows_align = [len(x) for x in rows_header]
 
-    PREFCORE_RANK_ROW_IDX = len(rows_header) - 3
+    govs_active = set()
+    epps_active = set()
+
     prefcore_ranks = []
 
     for i in range(nr_cpus):
@@ -156,41 +144,37 @@ def write_cpu_generic(nr_cpus: int) -> None:
             rows_align[i] = max(rows_align[i], len(x))
         rows.append(row)
 
-        governors.seen.add(governor)
-        epps.seen.add(epp)
+        govs_active.add(governor)
+        epps_active.add(epp)
 
     if amd:
-        table = {}
-        last = prefcore_ranks[0]; rank = 1
-        for k in sorted(prefcore_ranks, reverse=True):
-            if k != last:
-                last = k; rank += 1
-            table[k] = str(rank)
+        RANK_IDX = len(rows_header) - 3
+        ranks = {}
+        for i, r in enumerate(sorted(set(prefcore_ranks), reverse=True), 1):
+            ranks[r] = str(i)
         for i, row in enumerate(rows):
-            rows[i][PREFCORE_RANK_ROW_IDX] = table[int(row[PREFCORE_RANK_ROW_IDX])]
+            rows[i][RANK_IDX] = ranks[int(row[RANK_IDX])]
 
-    governors.items = \
+    govs_avail = \
         read_file(f'{CPU_PATH}/cpu0/cpufreq/scaling_available_governors').split()
-    epps.items = \
+    epps_avail = \
         read_file(f'{CPU_PATH}/cpu0/cpufreq/energy_performance_available_preferences').split()
 
-    title  = make_title(CPU_PATH)
     header = align_fields(rows_header, rows_align, SEP)
-    width  = len(header)
 
-    OUT.write(title + '\n')
+    OUT.write(make_title(CPU_PATH) + '\n')
     OUT.write(header + '\n')
     for r in rows:
         OUT.write(align_fields(r, rows_align, SEP) + '\n')
     OUT.write('\n')
 
     indent = 9
-    OUT.write(f'{"GOVERNORS":{indent}} = {governors.items_unique_marked()}\n')
+    OUT.write(f'{"GOVERNORS":{indent}} = {mark_unique(govs_avail, govs_active)}\n')
     OUT.write(f'{"EPPS":{indent}} = ')
 
     indent_str = (indent + 3) * ' '
-    epp_lines = wrap_deduct_green(
-        epps.items_unique_marked().split(), width - len(indent_str))
+    width = len(header) - len(indent_str)
+    epp_lines = wrap_deduct_green(mark_unique_list(epps_avail, epps_active), width)
     for i, l in enumerate(epp_lines):
         OUT.write((i > 0) * indent_str + l + '\n')
 
@@ -198,13 +182,11 @@ def write_acpi_profiles() -> None:
     if not os.path.exists(ACPI_PATH):
         return
 
-    profiles = Bundle()
-    profiles.items = read_file(ACPI_PATH + '/platform_profile_choices').split()
-    profiles.seen.add(read_file(ACPI_PATH + '/platform_profile'))
-    title = make_title(ACPI_PATH)
+    profiles_avail  = read_file(ACPI_PATH + '/platform_profile_choices').split()
+    profiles_active = {read_file(ACPI_PATH + '/platform_profile')}
 
-    OUT.write(title + '\n')
-    OUT.write(f'PROFILES = {profiles.items_unique_marked()}\n')
+    OUT.write(make_title(ACPI_PATH) + '\n')
+    OUT.write(f'PROFILES = {mark_unique(profiles_avail, profiles_active)}\n')
 
 def monitor_cpu_freq(
         nr_cpus: int,
@@ -212,7 +194,7 @@ def monitor_cpu_freq(
         fallback_mhz: int,
         avg_win_size: int
 ) -> None:
-    assert avg_win_size > 0 and avg_win_size & (avg_win_size - 1) == 0
+    assert (lambda x: x and x & (x - 1) == 0)(avg_win_size)
 
     cpu_fds = []
     for i in range(nr_cpus):
@@ -282,9 +264,7 @@ def main() -> int:
                     continue
                 return usage()
 
-            if arg == '-h' or arg == '--help':
-                return usage()
-            elif arg == '--fallback-mhz':
+            if arg == '--fallback-mhz':
                 if value.isdecimal():
                     fallback_mhz = int(value)
                 else:
@@ -292,6 +272,8 @@ def main() -> int:
             elif arg.isdecimal():
                 if not interval_ms:
                     interval_ms = int(arg)
+            else:
+                return usage()
 
     nr_cpus = os.sysconf('SC_NPROCESSORS_ONLN')
 
