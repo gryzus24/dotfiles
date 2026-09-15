@@ -24,24 +24,32 @@ def align_fields(fields: list[str], align: list[int], sep: str) -> str:
 
 # =============================================================================
 
-OUT = sys.stdout
+OUT          = sys.stdout
+ERR          = sys.stderr
 
 SEP          = '  '
 CGROUP_PATH  = '/sys/fs/cgroup'
 
-def main() -> int:
-    if not os.path.exists(CGROUP_PATH):
-        prog = os.path.basename(sys.argv[0])
-        sys.stderr.write(f'{prog}: /sys/fs/cgroup: No such file or directory\n')
-        return 1
+class Group:
+    __slots__ = ('depth', 'children', 'children_mass',
+                 'name', 'procs', 'weight', 'nice', 'cpus', 'effective')
+    def __init__(self, depth: int, name: str, procs: str, weight: str,
+                 nice: str, cpus: str, effective: str) -> None:
+        self.depth         = depth
+        self.children      = []
+        self.children_mass = 0
 
-    rows: list[list[str]] = []
-    rows_depth: list[int] = []
-    rows_header = ['CGROUP', 'NR_PROCS', 'WEIGHT', 'NICE', 'CPUS', 'EFFECTIVE']
-    rows_align = [len(x) for x in rows_header]
+        self.name          = name
+        self.procs         = procs
+        self.weight        = weight
+        self.nice          = nice
+        self.cpus          = cpus
+        self.effective     = effective
 
-    ctrls = ('cgroup.', 'cpuset.', 'cpu.', 'memory.', 'pids.', 'io.')
+def cgls() -> list[Group]:
+    groups: list[Group] = []
 
+    ctrlrs = ('cgroup.', 'cpuset.', 'cpu.', 'memory.', 'pids.', 'io.')
     anchois = []
     queue = [(-1, CGROUP_PATH)]
 
@@ -49,7 +57,7 @@ def main() -> int:
         depth, path = queue.pop()
 
         for b in os.listdir(path):
-            if b.startswith(ctrls): continue
+            if b.startswith(ctrlrs): continue
             if b.endswith('.mount'): continue
             p = f'{path}/{b}'
             if os.path.isdir(p):
@@ -66,36 +74,167 @@ def main() -> int:
             cpus      = read_file(path + '/cpuset.cpus', '.')
             effective = read_file(path + '/cpuset.cpus.effective', '.')
 
-            cg = os.path.basename(path).removesuffix('.service')
+            name = os.path.basename(path).removesuffix('.service')
 
-            row = [cg, '', weight, nice, cpus, effective]
-            sep = depth * len(SEP)
+            if procs:
+                procs = str(1 + procs.count('\n'))
+
+            row = [name, procs, weight, nice, cpus, effective]
+            groups.append(Group(depth, *row))
+
+    groups = [
+        g for _next, g in enumerate(groups, 1)
+        # Leaf cgroup has children OR cgroup is a parent.
+        if g.procs or (_next < len(groups) and g.depth < groups[_next].depth)
+    ]
+    roots: list[int] = []
+    parents = [0] * (1 + max([g.depth for g in groups]))
+
+    for i, g in enumerate(groups):
+        # Is there a parent to attach to?
+        if g.depth:
+            d = g.depth - 1
+            p = groups[parents[d]]
+            p.children.append(i)
+            p.children_mass += 1
+
+            while (d := d - 1) >= 0:
+                p = groups[parents[d]]
+                p.children_mass += 1
+        else:
+            roots.append(i)
+
+        parents[g.depth] = i
+
+    sort_args = {
+        'key': lambda x: (groups[x].children_mass, groups[x].name),
+        'reverse': True,
+    }
+    result: list[Group] = []
+    sort_queue = sorted(roots, **sort_args)
+
+    while sort_queue:
+        g = groups[sort_queue.pop()]
+        result.append(g)
+        sort_queue.extend(sorted(g.children, **sort_args))
+
+    return result
+
+class Operations:
+    CB_WEIGHT = 3
+    CB_CPUS   = 4
+    ACTIVE    = (CB_WEIGHT, CB_CPUS)
+
+    __slots__ = ('rows', 'name_min_max3')
+    def refresh(self) -> tuple[str, list[str], list[int]]:
+        groups = cgls()
+
+        header = ['CGROUP', 'NR_PROCS', 'NICE', 'WEIGHT', 'CPUS', 'EFFECTIVE']
+        align = [len(x) for x in header]
+
+        N = 3; max3 = [0] * N
+        rows: list[list[str]] = []
+        for g in groups:
+            row = [
+                g.depth * SEP + g.name,
+                g.procs or '.',
+                g.nice,
+                g.weight,
+                g.cpus,
+                g.effective
+            ]
             for i, x in enumerate(row):
-                rows_align[i] = max(rows_align[i], len(x) + (i == 0) * sep)
-            row[1] = procs
+                align[i] = max(align[i], len(x))
+
+            n = len(row[0])
+            for i in range(N):
+                if n > max3[i]:
+                    if i < 2: max3[2] = max3[1]
+                    if i < 1: max3[1] = max3[0]
+                    max3[i] = n
+                    break
 
             rows.append(row)
-            rows_depth.append(depth)
 
-    rows_align_bold = rows_align.copy()
-    rows_align_bold[0] += len(bold(''))
+        self.rows = rows
+        self.name_min_max3 = min(max3)
 
-    OUT.write(align_fields(rows_header, rows_align, SEP) + '\n')
-    for i, (cg, procs, weight, nice, cpus, effective) in enumerate(rows):
-        nr_procs = (not not procs) + procs.count('\n')
-        if not nr_procs:
-            if i + 1 >= len(rows_depth):
-                continue
-            if rows_depth[i] >= rows_depth[i + 1]:
-                continue
+        return (align_fields(header, align, SEP),
+               [align_fields(x, align, SEP) for x in rows],
+               align)
 
-        name = rows_depth[i] * '  ' + cg
-        if (slice := cg.endswith('.slice')):
+    def update_cell(self, cy: int, cx: int, text: str) -> str | None:
+        from subprocess import PIPE, Popen
+
+        if cx == Operations.CB_WEIGHT:
+            prop = 'CPUWeight'
+        elif cx == Operations.CB_CPUS:
+            prop = 'AllowedCPUs'
+        else:
+            return 'Inactive'
+
+        name = self.rows[cy][0].strip()
+        cmd = (
+            '/usr/bin/systemctl',
+            'set-property',
+            '--runtime',
+            name,
+            f'{prop}={text}',
+        )
+        with Popen(cmd, stderr=PIPE) as p:
+            _, err = p.communicate()
+
+        return err.strip().rpartition(b': ')[2].decode() or None
+
+def prog() -> str:
+    return os.path.basename(sys.argv[0])
+
+def perror(s: str) -> int:
+    ERR.write(f'{prog()}: {s}\n')
+    return 1
+
+def usage() -> int:
+    OUT.write(
+        f'usage: {prog()} [-i]\n'
+        '  -i   interactive edit mode\n'
+    )
+    return 2
+
+def main() -> int:
+    if not os.path.exists(CGROUP_PATH):
+        return perror('/sys/fs/cgroup: No such file or directory')
+
+    interactive = False
+
+    for arg in sys.argv[1:]:
+        if arg == '-i':
+            interactive = True
+        else:
+            return usage()
+
+    ops = Operations()
+    header, lines, align = ops.refresh()
+
+    if interactive:
+        import libcmenu
+        opts = libcmenu.Options()
+        opts.sep = SEP
+        opts.active_cb = Operations.ACTIVE
+        opts.cursor_ul = (0, libcmenu.curses.A_UNDERLINE)
+        opts.select_ul = (0, libcmenu.curses.A_STANDOUT)
+        opts.x_keep    = ops.name_min_max3 + len(SEP)
+        return libcmenu.curses_menu(header, lines, align, opts, ops)
+
+    align_bold = align.copy()
+    align_bold[0] += len(bold(''))
+
+    OUT.write(header + '\n')
+    for name, procs, weight, nice, cpus, effective in ops.rows:
+        if (slice := name.endswith('.slice')):
             name = bold(name)
 
-        row = align_fields(
-            [name, str(nr_procs) if nr_procs else '.', weight, nice, cpus, effective],
-            rows_align_bold if slice else rows_align, SEP)
+        row = align_fields([name, procs, weight, nice, cpus, effective],
+                           align_bold if slice else align, SEP)
         OUT.write(row + '\n')
 
     return 0
@@ -104,4 +243,4 @@ if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except KeyboardInterrupt:
-        OUT.write('\n')
+        pass

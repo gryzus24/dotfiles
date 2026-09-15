@@ -4,22 +4,35 @@ import os
 import sys
 import time
 
-def bold(s: str) -> str:
-    return '\033[37;1m' + s + '\033[m'  #]]
-
-def green(s: str) -> str:
-    return '\033[32m' + s + '\033[m'  #]]
+def bold(s: str)  -> str: return '\033[37;1m' + s + '\033[m'  #]]
+def green(s: str) -> str: return '\033[32m'   + s + '\033[m'  #]]
 
 def read_fd(fd: int) -> str:
     return os.pread(fd, 4096, 0).strip().decode()
 
-def read_file(path: str) -> str:
+def read_file(path: str, default: str = 'N/A') -> str:
     try:
         fd = os.open(path, 0)
     except FileNotFoundError:
-        return 'N/A'
+        return default
     try:
         return read_fd(fd)
+    except OSError: # CPU possibly offline.
+        return default
+    finally:
+        os.close(fd)
+
+def write_file(path: str, s: str) -> str | None:
+    try:
+        fd = os.open(path, os.O_WRONLY)
+    except FileNotFoundError:
+        return 'No file'
+    except PermissionError:
+        return 'Need root'
+    try:
+        os.write(fd, s.encode())
+    except OSError:
+        return 'Bad input'
     finally:
         os.close(fd)
 
@@ -55,6 +68,20 @@ def mark_unique_list(items: list[str], unique: set[str]) -> list[str]:
 def mark_unique(items: list[str], unique: set[str]) -> str:
     return ' '.join(mark_unique_list(items, unique))
 
+def mhz(khz: str) -> str:
+    n, m = divmod(int(khz), 1000)
+    return f'{n}.{m:0>3}'
+
+def khz_from_mhz_str(mhz: str) -> int | None:
+    a, _, b = mhz.partition('.')
+    a = a.strip()
+    b = b.strip()
+    if not a: a = '0'
+    if not b: b = '0'
+    if a.isdecimal() and b.isdecimal():
+        return int(a) * 1000 + int(f'{b:0<3}')
+    return None
+
 # =============================================================================
 
 OUT = sys.stdout
@@ -85,108 +112,167 @@ def write_cpu_intel_pstate() -> None:
     row    = [hwp_dynboost, perf_range, turbo, status]
     align  = [max(len(header[i]), len(x)) for i, x in enumerate(row)]
 
-    OUT.write(make_title(CPU_INTEL_PSTATE_PATH) + '\n')
-    OUT.write(align_fields(header, align, SEP) + '\n')
-    OUT.write(align_fields(row, align, SEP) + '\n')
+    OUT.write(f'{make_title(CPU_INTEL_PSTATE_PATH)}\n'
+              f'{align_fields(header, align, SEP)}\n'
+              f'{align_fields(row, align, SEP)}\n')
 
 def write_cpu_idle() -> None:
     if not os.path.exists(CPU_IDLE_PATH):
         return
 
-    gov_avail  = read_file(CPU_IDLE_PATH + '/available_governors').split()
-    gov_active = {read_file(CPU_IDLE_PATH + '/current_governor_ro')}
-    driver     = read_file(CPU_IDLE_PATH + '/current_driver')
+    govs_avail  =  read_file(CPU_IDLE_PATH + '/available_governors').split()
+    govs_active = {read_file(CPU_IDLE_PATH + '/current_governor_ro')}
+    driver      =  read_file(CPU_IDLE_PATH + '/current_driver')
 
-    OUT.write(make_title(CPU_IDLE_PATH) + '\n')
-    OUT.write(f'GOVERNORS = {mark_unique(gov_avail, gov_active)}\n')
-    OUT.write(f'DRIVER    = {driver}\n')
+    OUT.write(f'{make_title(CPU_IDLE_PATH)}\n'
+              f'GOVERNORS = {mark_unique(govs_avail, govs_active)}\n'
+              f'DRIVER    = {driver}\n')
 
-def write_cpu_generic(nr_cpus: int) -> None:
-    amd = os.path.exists(CPU_PATH + '/amd_pstate')
+class Cpus:
+    CB_SCALING      = 2
+    CB_GOVERNOR     = 3
+    CB_EPP          = 4
+    CB_EPB          = 5
+    CB_ONLINE       = 6
+    CB_AMD_BOOST    = 7
 
-    rows: list[list[str]] = []
-    rows_header = ['CPU', 'GOVERNOR', 'CPU MHz', 'SCALING MHz']
-    if amd:
-        rows_header.extend(['BOOST', 'PREFCORE', 'RANK'])
-    rows_header.extend(['EPP', 'EPB'])
-    rows_align = [len(x) for x in rows_header]
+    __slots__ = ('amd', 'nr_cpus', 'govs_active', 'govs_avail',
+                 'epps_active', 'epps_avail', 'active_callbacks')
+    def refresh(self) -> tuple[str, list[str], list[int]]:
+        amd = os.path.exists(CPU_PATH + '/amd_pstate')
+        nr_cpus = os.sysconf('SC_NPROCESSORS_CONF')
 
-    govs_active = set()
-    epps_active = set()
-
-    prefcore_ranks = []
-
-    for i in range(nr_cpus):
-        this_cpufreq  = f'{CPU_PATH}/cpu{i}/cpufreq/'
-        this_power    = f'{CPU_PATH}/cpu{i}/power/'
-
-        governor      =     read_file(this_cpufreq + 'scaling_governor')
-        scaling_min   = int(read_file(this_cpufreq + 'scaling_min_freq')) // 1000
-        scaling_max   = int(read_file(this_cpufreq + 'scaling_max_freq')) // 1000
-        cpuinfo_min   = int(read_file(this_cpufreq + 'cpuinfo_min_freq')) // 1000
-        cpuinfo_max   = int(read_file(this_cpufreq + 'cpuinfo_max_freq')) // 1000
-        epp           =     read_file(this_cpufreq + 'energy_performance_preference')
-        epb           =     read_file(this_power   + 'energy_perf_bias')
-        cpu           = str(i)
-        cpu_range     = f'{cpuinfo_min:>4} - {cpuinfo_max:<4}'
-        scaling_range = f'{scaling_min:>4} - {scaling_max:<4}'
-
-        row = [cpu, governor, cpu_range, scaling_range]
+        rows: list[list[str]] = []
+        header = ['CPU', 'CPU MHz', 'SCALING MHz', 'GOVERNOR', 'EPP', 'EPB', 'ONLINE']
         if amd:
-            boost         = read_file(this_cpufreq + 'boost')
-            prefcore      = read_file(this_cpufreq + 'amd_pstate_hw_prefcore')
-            prefcore_rank = read_file(this_cpufreq + 'amd_pstate_prefcore_ranking')
-            prefcore_ranks.append(int(prefcore_rank))
-            row.extend([boost, prefcore, prefcore_rank])
-        row.extend([epp, epb])
+            header.extend(['BOOST', 'PREFCORE', 'RANK'])
+        align = [len(x) for x in header]
 
-        for i, x in enumerate(row):
-            rows_align[i] = max(rows_align[i], len(x))
-        rows.append(row)
+        govs_active = set()
+        epps_active = set()
 
-        govs_active.add(governor)
-        epps_active.add(epp)
+        prefcore_ranks = []
 
-    if amd:
-        RANK_IDX = len(rows_header) - 3
-        ranks = {}
-        for i, r in enumerate(sorted(set(prefcore_ranks), reverse=True), 1):
-            ranks[r] = str(i)
-        for i, row in enumerate(rows):
-            rows[i][RANK_IDX] = ranks[int(row[RANK_IDX])]
+        for i in range(nr_cpus):
+            this          = f'{CPU_PATH}/cpu{i}/'
+            governor      =     read_file(this + 'cpufreq/scaling_governor')
+            _scaling_min  = mhz(read_file(this + 'cpufreq/scaling_min_freq', '0'))
+            _scaling_max  = mhz(read_file(this + 'cpufreq/scaling_max_freq', '0'))
+            _cpuinfo_min  = mhz(read_file(this + 'cpufreq/cpuinfo_min_freq', '0'))
+            _cpuinfo_max  = mhz(read_file(this + 'cpufreq/cpuinfo_max_freq', '0'))
+            epp           =     read_file(this + 'cpufreq/energy_performance_preference')
+            epb           =     read_file(this + 'power/energy_perf_bias')
+            online        =     read_file(this + 'online')
+            cpu           = str(i)
+            cpu_range     = f'{_cpuinfo_min:>4} - {_cpuinfo_max:<4}'
+            scaling_range = f'{_scaling_min:>4} - {_scaling_max:<4}'
 
-    govs_avail = \
-        read_file(f'{CPU_PATH}/cpu0/cpufreq/scaling_available_governors').split()
-    epps_avail = \
-        read_file(f'{CPU_PATH}/cpu0/cpufreq/energy_performance_available_preferences').split()
+            row = [cpu, cpu_range, scaling_range, governor, epp, epb, online]
+            if amd:
+                boost    = read_file(this + 'cpufreq/boost')
+                prefcore = read_file(this + 'cpufreq/amd_pstate_hw_prefcore')
+                rank     = read_file(this + 'cpufreq/amd_pstate_prefcore_ranking', '-1')
+                prefcore_ranks.append(int(rank))
+                row.extend([boost, prefcore, rank])
 
-    header = align_fields(rows_header, rows_align, SEP)
+            for i, x in enumerate(row):
+                align[i] = max(align[i], len(x))
 
-    OUT.write(make_title(CPU_PATH) + '\n')
-    OUT.write(header + '\n')
-    for r in rows:
-        OUT.write(align_fields(r, rows_align, SEP) + '\n')
-    OUT.write('\n')
+            rows.append(row)
 
-    indent = 9
-    OUT.write(f'{"GOVERNORS":{indent}} = {mark_unique(govs_avail, govs_active)}\n')
-    OUT.write(f'{"EPPS":{indent}} = ')
+            govs_active.add(governor)
+            epps_active.add(epp)
 
-    indent_str = (indent + 3) * ' '
-    width = len(header) - len(indent_str)
-    epp_lines = wrap_deduct_green(mark_unique_list(epps_avail, epps_active), width)
-    for i, l in enumerate(epp_lines):
-        OUT.write((i > 0) * indent_str + l + '\n')
+        if amd:
+            RANK_IDX = -1
+            ranks = {}
+            # This could even be a one-liner: dict(map(reverse, enumerate(...
+            for i, r in enumerate(sorted(set(prefcore_ranks), reverse=True), 1):
+                ranks[r] = str(i)
+            for i, row in enumerate(rows):
+                rows[i][RANK_IDX] = ranks[int(row[RANK_IDX])]
+
+        govs_avail = \
+            read_file(CPU_PATH + '/cpu0/cpufreq/scaling_available_governors').split()
+        epps_avail = \
+            read_file(CPU_PATH + '/cpu0/cpufreq/energy_performance_available_preferences').split()
+
+        self.amd         = amd
+        self.nr_cpus     = nr_cpus
+        self.govs_active = govs_active
+        self.govs_avail  = govs_avail
+        self.epps_active = epps_active
+        self.epps_avail  = epps_avail
+        self.active_callbacks = [
+            Cpus.CB_SCALING,
+            Cpus.CB_GOVERNOR,
+            Cpus.CB_EPP,
+            Cpus.CB_EPB,
+            Cpus.CB_ONLINE,
+        ]
+        if amd:
+            self.active_callbacks.append(Cpus.CB_AMD_BOOST)
+
+        return (align_fields(header, align, SEP),
+               [align_fields(x, align, SEP) for x in rows],
+               align)
+
+    def update_cell(self, cy: int, cx: int, text: str) -> str | None:
+        text = text.strip()
+        this = f'{CPU_PATH}/cpu{cy}/'
+        if cx == Cpus.CB_SCALING:
+            lo, _, hi = text.partition('-')
+            lo_khz = hi_khz = khz_from_mhz_str(lo)
+            if hi:
+                hi_khz = khz_from_mhz_str(hi)
+            if lo_khz is None or hi_khz is None:
+                return 'Bad input'
+            return (write_file(this + 'cpufreq/scaling_min_freq', str(lo_khz)) or
+                    write_file(this + 'cpufreq/scaling_max_freq', str(hi_khz)))
+        if cx == Cpus.CB_GOVERNOR:
+            return write_file(this + 'cpufreq/scaling_governor', text)
+        if cx == Cpus.CB_EPP:
+            return write_file(this + 'cpufreq/energy_performance_preference', text)
+        if cx == Cpus.CB_EPB:
+            return write_file(this + 'cpufreq/energy_perf_bias', text)
+        if cx == Cpus.CB_ONLINE:
+            if text not in {'0', '1'}:
+                return 'Bad input'
+            return write_file(this + 'online', text)
+        if cx == Cpus.CB_AMD_BOOST:
+            if text not in {'0', '1'}:
+                return 'Bad input'
+            return write_file(this + 'cpufreq/boost', text)
+        return 'Inactive'
+
+    def refresh_and_write(self) -> None:
+        header, lines, _ = self.refresh()
+
+        indent = len('GOVERNORS = ') * ' '
+        wrap_width = len(header) - len(indent)
+
+        gov_lines = wrap_deduct_green(
+            mark_unique_list(self.govs_avail, self.govs_active), wrap_width)
+        epp_lines = wrap_deduct_green(
+            mark_unique_list(self.epps_avail, self.epps_active), wrap_width)
+
+        nl = '\n'
+        nl_indent = '\n' + indent
+        OUT.write(f'{make_title(CPU_PATH)}\n'
+                  f'{header}\n'
+                  f'{nl.join(lines)}\n\n'
+                  f'GOVERNORS = {nl_indent.join(gov_lines)}\n'
+                  f'EPPS      = {nl_indent.join(epp_lines)}\n')
 
 def write_acpi_profiles() -> None:
     if not os.path.exists(ACPI_PATH):
         return
 
-    profiles_avail  = read_file(ACPI_PATH + '/platform_profile_choices').split()
-    profiles_active = {read_file(ACPI_PATH + '/platform_profile')}
+    avail  =  read_file(ACPI_PATH + '/platform_profile_choices').split()
+    active = {read_file(ACPI_PATH + '/platform_profile')}
 
-    OUT.write(make_title(ACPI_PATH) + '\n')
-    OUT.write(f'PROFILES = {mark_unique(profiles_avail, profiles_active)}\n')
+    OUT.write(f'{make_title(ACPI_PATH)}\n'
+              f'PROFILES = {mark_unique(avail, active)}\n')
 
 def monitor_cpu_freq(
         nr_cpus: int,
@@ -198,12 +284,10 @@ def monitor_cpu_freq(
 
     cpu_fds = []
     for i in range(nr_cpus):
-        path = f'{CPU_PATH}/cpu{i}/cpufreq/scaling_cur_freq'
-        cpu_fds.append(os.open(path, 0))
-        OUT.write(f'{"CPU" + str(i):6}')
-    for e in 'AVG' + str(avg_win_size), 'MIN', 'MAX':
-        OUT.write(f'{e:6}')
-    OUT.write('\n')
+        fd = os.open(f'{CPU_PATH}/cpu{i}/cpufreq/scaling_cur_freq', 0)
+        cpu_fds.append(fd)
+        OUT.write(f'CPU{i:<3}')
+    OUT.write(f' AVG{avg_win_size:<3}MIN   MAX\n')
 
     interval_sec = interval_ms / 1000
     freq_min = 1000 * 1000
@@ -213,11 +297,17 @@ def monitor_cpu_freq(
     avg_win = [0] * avg_win_size
     i = 0
 
+    def read_fd_nofail(fd: int) -> str:
+        try:
+            return read_fd(fd)
+        except OSError:
+            return '0'
+
     while True:
         s = ''
         t = 0
-        for f in [read_fd(fd) for fd in cpu_fds]:
-            mhz = int(f) // 1000
+        for fd in cpu_fds:
+            mhz = int(read_fd_nofail(fd)) // 1000
             if   mhz < freq_min: freq_min = mhz
             elif mhz > freq_max: freq_max = mhz
             if mhz == fallback_mhz:
@@ -239,20 +329,24 @@ def monitor_cpu_freq(
 
 def usage() -> int:
     OUT.write(
-        f'usage: {os.path.basename(sys.argv[0])} [[--fallback-mhz=800] <interval_ms>]\n'
-        '  --fallback-mhz    After the CPU is idle for 20ms the kernel decides against\n'
-        '                    sending an IPI to query current CPU frequency and instead\n'
-        '                    retrieves a cpufreq driver-dependent per-CPU policy value\n'
-        '                    as fallback. This is a good indication the CPU is idling.\n'
-        '                    Set this option to the apparent fallback value -- usually\n'
-        '                    the lowest P-State frequency -- to visually differentiate\n'
-        '                    potential fallback values from actual frequency readouts.\n'
+        f'usage: {os.path.basename(sys.argv[0])} [[--fallback-mhz=800] <interval_ms>] [-i]\n'
+        '  --fallback-mhz   After the CPU is idle for 20ms the kernel decides against\n'
+        '                   sending an IPI to query current CPU frequency and instead\n'
+        '                   retrieves a cpufreq driver-dependent per-CPU policy value\n'
+        '                   as fallback. This is a good indication the CPU is idling.\n'
+        '                   Set this option to the apparent fallback value -- usually\n'
+        '                   the lowest P-State frequency -- to visually differentiate\n'
+        '                   potential fallback values from actual frequency readouts.\n'
+        '\n'
+        '  -i               Interactive edit mode.\n'
     )
     return 2
 
 def main() -> int:
-    interval_ms = 0
+    interval_ms  = 0
     fallback_mhz = 800
+    interactive  = False
+
     if len(sys.argv) > 1:
         get_fallback_mhz = False
         for arg in sys.argv[1:]:
@@ -264,7 +358,9 @@ def main() -> int:
                     continue
                 return usage()
 
-            if arg == '--fallback-mhz':
+            if arg == '-i':
+                interactive = True
+            elif arg == '--fallback-mhz':
                 if value.isdecimal():
                     fallback_mhz = int(value)
                 else:
@@ -275,14 +371,25 @@ def main() -> int:
             else:
                 return usage()
 
-    nr_cpus = os.sysconf('SC_NPROCESSORS_ONLN')
+    cpus = Cpus()
+
+    if interactive:
+        import libcmenu
+        header, lines, align = cpus.refresh()
+        opts = libcmenu.Options()
+        opts.sep = SEP
+        opts.active_cb = tuple(cpus.active_callbacks)
+        opts.cursor_ul = (0, libcmenu.curses.A_UNDERLINE)
+        opts.select_ul = (0, libcmenu.curses.A_STANDOUT)
+        opts.x_keep = align[0] + len(SEP)
+        return libcmenu.curses_menu(header, lines, align, opts, cpus)
 
     write_cpu_intel_pstate()
-    write_cpu_generic(nr_cpus)
+    cpus.refresh_and_write()
     write_cpu_idle()
     write_acpi_profiles()
     if interval_ms:
-        monitor_cpu_freq(nr_cpus, interval_ms, fallback_mhz, 8)
+        monitor_cpu_freq(cpus.nr_cpus, interval_ms, fallback_mhz, 8)
 
     return 0
 
@@ -290,4 +397,4 @@ if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except KeyboardInterrupt:
-        OUT.write('\n')
+        pass
