@@ -33,7 +33,7 @@ def main() -> int:
             addrs[i] = f'{a[:-8]}{_green.format(a[-8:-6])}{a[-6:]}'
 
         o.write(
-            f'{'-'.join(addrs)} {r.size >> 20:>6} MB {r.size >> 10:>9} kB '
+            f'{"-".join(addrs)} {r.size >> 20:>6} MB {r.size >> 10:>9} kB '
             f'{r.indent * " "}{r.name}\n')
 
     return 0
