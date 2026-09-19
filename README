@@ -44,7 +44,7 @@ Scripts in ~/bin listed alphabetically
     --
     vi-style navigation, q to quit
   Dependencies
-    * python (3.7+)
+    * python (3.8+)
 
 - cgb
     Print the name of the current git branch in the format: "($branch) "
@@ -135,8 +135,13 @@ Scripts in ~/bin listed alphabetically
 - cgls
     Print the cgroup tree from /sys/fs/cgroup alongside CPU and CPUSET
     controller's properties.
+
+    If -i is specified, enter interactive edit mode where cgroup's
+    weight and CPU affinity can be changed.
+  Usage
+    $ cgls [-i]
   Dependencies
-    * python (3.9+)
+    * python (3.10+)
 
 - cliphist-wl-copy (wayland)
     Pick an entry from the clipboard history... and copy it!
@@ -153,15 +158,19 @@ Scripts in ~/bin listed alphabetically
 
 - cpu-scaling
     Print information related to system's CPU frequency scaling and
-    power management policies. If <n> is specified, query current CPU
-    frequency as reported by the kernel (aperf/mperf delta from the last
-    non-idle tick or a "fallback frequency" - see the --help text for
-    more information - if no recent enough tick data was available for
-    ~20ms) every <n> milliseconds.
+    power management policies.
+
+    If <n> is specified, query current CPU frequency as reported by the
+    kernel (aperf/mperf delta from the last non-idle tick or a "fallback
+    frequency" - see the --help text for more information - if no recent
+    enough tick data was available for ~20ms) every <n> milliseconds.
+
+    If -i is specified, enter interactive edit mode where certain
+    policies can be changed. Root privileges required.
   Usage
-    $ cpu-scaling [[--fallback-mhz=800] <n>]
+    $ cpu-scaling [[--fallback-mhz=800] <n>] [-i]
   Dependencies
-    * python (3.8+)
+    * python (3.10+)
 
 - deduplicate-bash-history
     Remove duplicates from the ~/.bash_history file.
@@ -230,7 +239,7 @@ Scripts in ~/bin listed alphabetically
     --
     vi-style navigation, q to quit
   Dependencies
-    * python (3.8+)
+    * python (3.9+)
 
 - lscat
     Recursively iterate over all files in the current working directory,
