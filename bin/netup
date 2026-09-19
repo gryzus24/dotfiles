@@ -11,4 +11,4 @@ GW=192.168.1.1
 
 ip link set "$DEV" up
 ip addr add "$IP" dev "$DEV"
-ip route add default via "$GW" dev "$DEV"
+ip route add default via "$GW" dev "$DEV" proto static initcwnd 30 initrwnd 30
