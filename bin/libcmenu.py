@@ -31,12 +31,13 @@ def mvchgat(win: curses.window, y: int, x: int, n: int, attr: int) -> None:
     except curses.error: pass
 
 class Cursor:
-    __slots__ = ('cy', 'cx', 'cy_max', 'cx_max')
+    __slots__ = ('cy', 'cx', 'cy_max', 'cx_max', 'sel')
     def __init__(self, cy: int, cx: int, cy_max: int, cx_max: int) -> None:
         self.cy = max(min(cy, cy_max), 0)
         self.cx = max(min(cx, cx_max), 0)
         self.cy_max = cy_max
         self.cx_max = cx_max
+        self.sel: set[YX] = set()
 
     @property
     def cyx(self)   -> YX: return self.cy, self.cx
@@ -52,8 +53,7 @@ class Cursor:
 class Prompt:
     __slots__ = ('i', 'text')
     def __init__(self) -> None:
-        self.i = 0
-        self.text = ''
+        self.i, self.text = 0, ''
 
     def left(self)  -> None: self.i = max(self.i - 1, 0)
     def right(self) -> None: self.i = min(self.i + 1, len(self.text))
@@ -64,17 +64,31 @@ class Prompt:
         self.i += len(s)
     def delete(self) -> None:
         self.text = self.text[:self.i] + self.text[self.i + 1:]
-    def backspace(self) -> None:
-        j = max(self.i - 1, 0)
-        self.text = self.text[:j] + self.text[self.i:]
-        self.i = j
-    def delete_word(self) -> None:
-        i = self.i; t = self.text
+    def backspace(self) -> bool:  # canceled?
+        far = self.i > 0
+        if far:
+            self.i -= 1
+            self.delete()
+        return not far and not self.text
+    def backword(self) -> bool:  # canceled?
+        i, t = self.i, self.text
+        far = i > 0
         while (i := i - 1) > 0:
             if t[i] != ' ' and t[i - 1] == ' ':
                 break
         i = max(i, 0)
-        self.i = i; self.text = t[:i]
+        self.i, self.text = i, t[:i]
+        return not far and not self.text
+
+    ACTIONS = {
+        b'KEY_LEFT'     : left,        b'^B': left,
+        b'KEY_RIGHT'    : right,       b'^F': right,
+        b'KEY_HOME'     : home,        b'^A': home,
+        b'KEY_END'      : end,         b'^E': end,
+        b'KEY_DC'       : delete,
+        b'KEY_BACKSPACE': backspace,   b'^H': backspace,
+        b'^W'           : backword,
+    }
 
 HELP_DEFAULT = True
 
@@ -117,6 +131,8 @@ def _curses_menu(win: curses.window, header: str, lines: list[str],
 
     update_height_width()
 
+    lines_initial = lines
+
     xn_map = align
     x_map = [0]
     for a in align:
@@ -132,20 +148,27 @@ def _curses_menu(win: curses.window, header: str, lines: list[str],
             i += 1
         x_keep_nr_fields = i
 
+    MODE_NORMAL = 0
+    MODE_PROMPT = 1
+    MODE_FILTER = 2
+    mode = MODE_NORMAL
+
     cur = Cursor(*st.cursor, len(lines) - 1, len(align) - 1)
-    sel: set[YX] = set()
     sel_tmp = False
 
     prompt = Prompt()
-    prompt_on = False
     errors: dict[YX, str] = {}
 
-    help = 'F1/? help  (d/D)s/S (de)select/column  Enter/Esc prompt  ^L refresh'
+    filtr = Prompt()
+    filtr_real_cy = list(range(len(lines)))
+
+    help = 'F1/? Help  (d/D)s/S (De)select/Column  Enter/Esc Prompt  r Refresh  / Filter'
     help_attr_xn = [
         (help.index('F'), 4),
         (help.index('('), 8),
         (help.index('E'), 9),
-        (help.index('^'), 2)
+        (help.index('R') - 2, 1),
+        (help.index('i') - 3, 1),
     ]
 
     def check_scroll() -> None:
@@ -163,7 +186,7 @@ def _curses_menu(win: curses.window, header: str, lines: list[str],
     check_scroll()
 
     def real_xn(cx: int, *, top: bool = False) -> tuple[int, int]:
-        x = x_map[cx]; n = xn_map[cx]
+        x, n = x_map[cx], xn_map[cx]
         if cx < x_keep_nr_fields:
             if x_keep:
                 n = max(n - st.hscroll, x_keep - len(opts.sep), 0)
@@ -178,14 +201,14 @@ def _curses_menu(win: curses.window, header: str, lines: list[str],
     def real_y(cy: int) -> int:
         return HEADER + cy - st.vscroll
 
-    def draw_line(y: int, item: str, attr: int) -> None:
+    def draw_line(y: int, line: str, attr: int) -> None:
         cut      = max(x_map[x_keep_nr_fields] - st.hscroll, x_keep)
         view_x   = st.hscroll + cut
         view_end = st.hscroll + WIDTH
         if x_keep:
             cut_sepless = max(cut - len(opts.sep), 0)
-            mvaddstr(win, y, X_OFF, item[:cut_sepless], attr)
-        mvaddstr(win, y, X_OFF + cut, item[view_x:view_end], attr)
+            mvaddstr(win, y, X_OFF, line[:cut_sepless], attr)
+        mvaddstr(win, y, X_OFF + cut, line[view_x:view_end], attr)
 
     def draw_hl(cy: int, cx: int, attr: int, *, top: bool = False) -> None:
         if HEADER <= (y := real_y(cy)) <= HEIGHT:
@@ -199,6 +222,11 @@ def _curses_menu(win: curses.window, header: str, lines: list[str],
     def sel_attr(cx: int) -> int:
         return (GREEN if cx in opts.active_cb else RED) | curses.A_STANDOUT
 
+    def prompt_or_filtr(mode: int) -> Prompt:
+        if mode == MODE_PROMPT: return prompt
+        if mode == MODE_FILTER: return filtr
+        raise AssertionError
+
     up           = lambda: cur.up() or check_scroll()
     down         = lambda: cur.down() or check_scroll()
     left         = lambda: cur.left() or check_scroll()
@@ -207,19 +235,19 @@ def _curses_menu(win: curses.window, header: str, lines: list[str],
     bot          = lambda: cur.bot() or check_scroll()
     beg          = lambda: cur.beg() or check_scroll()
     end          = lambda: cur.end() or check_scroll()
-    select       = lambda: sel.add(cur.cyx)
-    deselect     = lambda: sel.discard(cur.cyx)
+    select       = lambda: cur.sel.add(cur.cyx)
+    deselect     = lambda: cur.sel.discard(cur.cyx)
     select_down  = lambda: select() or cur.down()
-    select_all   = lambda: [sel.add((y, cur.cx)) for y, _ in enumerate(lines)]
-    deselect_all = lambda: [sel.discard((y, cur.cx)) for y, _ in enumerate(lines)]
+    select_all   = lambda: [cur.sel.add((y, cur.cx)) for y, _ in enumerate(lines)]
+    deselect_all = lambda: [cur.sel.discard((y, cur.cx)) for y, _ in enumerate(lines)]
     resize       = lambda: (curses.update_lines_cols() or
                             update_height_width() or
                             check_scroll())
     actions = {
-        b'k'         : up,    b'KEY_UP'   : up,
-        b'j'         : down,  b'KEY_DOWN' : down,
-        b'h'         : left,  b'KEY_LEFT' : left,
-        b'l'         : right, b'KEY_RIGHT': right,
+        b'k'         : up,    b'K': up,    b'KEY_UP'   : up,
+        b'j'         : down,  b'J': down,  b'KEY_DOWN' : down,
+        b'h'         : left,  b'H': left,  b'KEY_LEFT' : left,
+        b'l'         : right, b'L': right, b'KEY_RIGHT': right,
         b'g'         : top,
         b'G'         : bot,
         b'^'         : beg,   b'0': beg,
@@ -231,20 +259,12 @@ def _curses_menu(win: curses.window, header: str, lines: list[str],
         b'D'         : deselect_all,
         b'KEY_RESIZE': resize,
     }
-    prompt_actions = {
-        b'KEY_LEFT'     : prompt.left,      b'^B': prompt.left,
-        b'KEY_RIGHT'    : prompt.right,     b'^F': prompt.right,
-        b'KEY_HOME'     : prompt.home,      b'^A': prompt.home,
-        b'KEY_END'      : prompt.end,       b'^E': prompt.end,
-        b'KEY_DC'       : prompt.delete,
-        b'KEY_BACKSPACE': prompt.backspace, b'^H': prompt.backspace,
-        b'^W'           : prompt.delete_word,
-    }
     ESC     = frozenset({b'^['})  #]
     ENTER   = frozenset({b'^M'})
     HELP    = frozenset({b'KEY_F(1)', b'?'})
     QUIT    = frozenset({b'q', b'Q'})
-    REFRESH = frozenset({b'^L'})
+    REFRESH = frozenset({b'r', b'^L'})
+    FILTER  = frozenset({b'/', b'KEY_F(4)'})
     while True:
         update_height_width()
 
@@ -254,8 +274,8 @@ def _curses_menu(win: curses.window, header: str, lines: list[str],
         for cx in opts.active_cb:
             mvchgat(win, 0, *real_xn(cx), GREEN | curses.A_BOLD)
         # Draw LINES.
-        for y, item in enumerate(lines[st.vscroll:st.vscroll + HEIGHT]):
-            draw_line(HEADER + y, item, 0)
+        for y, line in enumerate(lines[st.vscroll:st.vscroll + HEIGHT]):
+            draw_line(HEADER + y, line, 0)
 
         if st.help:
             # Draw HELP.
@@ -264,15 +284,15 @@ def _curses_menu(win: curses.window, header: str, lines: list[str],
             for x, n in help_attr_xn:
                 mvchgat(win, y, X_OFF + x, n, GREEN | curses.A_BOLD)
 
-        if prompt_on:
+        if mode == MODE_PROMPT:
             # Draw PROMPTS.
-            for cy, cx in sel:
+            for cy, cx in cur.sel:
                 y = real_y(cy); x, _ = real_xn(cx)
                 mvaddstr(win, y, x, prompt.text, curses.A_BOLD)
                 mvchgat(win, y, x + prompt.i, 1, sel_attr(cx))
         else:
             # Draw SELECTIONS.
-            for cyx in sel:
+            for cyx in cur.sel:
                 if cyx not in errors:
                     cy, cx = cyx
                     draw_ul(cy, opts.select_ul)
@@ -285,47 +305,68 @@ def _curses_menu(win: curses.window, header: str, lines: list[str],
                 y = real_y(cy); x, _ = real_xn(cx)
                 mvaddstr(win, y, x, err, RED)
 
+            if mode == MODE_FILTER:
+                # Draw FILTER.
+                y, t = HEIGHT + 1, 'Filter: '
+                mvaddstr(win, y, 0, t + filtr.text, curses.A_BOLD); win.clrtoeol()
+                mvchgat(win, y, len(t) + filtr.i, 1, curses.A_STANDOUT)
+
         c = win.getch()
         key = curses.keyname(c)
-        if key in REFRESH:
-            return State(cur.cyx, st.vscroll, st.hscroll, st.help)
 
-        if prompt_on:
-            if key in prompt_actions:
-                prompt_actions[key]()
+        if mode in {MODE_PROMPT, MODE_FILTER}:
+            canceled = False
+            p = prompt_or_filtr(mode)
+            if key in Prompt.ACTIONS:
+                canceled = Prompt.ACTIONS[key](p)
             elif 32 <= c <= 126:
-                prompt.insert(chr(c))
+                p.insert(chr(c))
             elif key in ENTER:
                 errors.clear()
-                for cy, cx in sel:
-                    err = ops.update_cell(cy, cx, prompt.text)
-                    if err is not None:
-                        errors[cy, cx] = err
-                if not errors:
-                    return State(cur.cyx, st.vscroll, st.hscroll, st.help)
+                if mode == MODE_PROMPT:
+                    for cy, cx in cur.sel:
+                        err = ops.update_cell(filtr_real_cy[cy], cx, prompt.text)
+                        if err is not None:
+                            errors[cy, cx] = err
+                    if not errors:
+                        return State(cur.cyx, st.vscroll, st.hscroll, st.help)
+                else:
+                    import re
+                    t = filtr.text; filtr_real_cy = [
+                        i for i, line in enumerate(lines_initial)
+                        if not t or re.search(t, line) is not None
+                    ]
+                    if filtr_real_cy:
+                        lines = [lines_initial[y] for y in filtr_real_cy]
+                        cur = Cursor(*cur.cyx, len(lines) - 1, len(align) - 1)
+                        check_scroll()
 
-            if key in ENTER | ESC:
+            if (key in ENTER | ESC) or canceled:
                 if sel_tmp:
                     deselect()
                     sel_tmp = False
-                prompt_on = False
+                mode = MODE_NORMAL
         else:
-            if key in actions:
+            if key in REFRESH:
+                return State(cur.cyx, st.vscroll, st.hscroll, st.help)
+            elif key in actions:
                 actions[key]()
             elif key in ESC:
                 if errors:
                     return State(cur.cyx, st.vscroll, st.hscroll, st.help)
-                sel.clear()
+                cur.sel.clear()
             elif key in HELP:
                 st.help = not st.help
             elif key in QUIT:
                 return None
 
             if key in ENTER:
-                if not sel:
+                if not cur.sel:
                     select()
                     sel_tmp = True
-                prompt_on = True
+                mode = MODE_PROMPT
+            elif key in FILTER:
+                mode = MODE_FILTER
 
 def ignore(exception, func, *args, **kwargs):
     try: return func(*args, **kwargs)
