@@ -1,12 +1,11 @@
-#!/bin/sh
+#!/bin/dash
 
-PREFIX="$HOME"
-BINDIR="$PREFIX/bin"
-SRCDIR="$BINDIR/src"
-OVRDIR="$BINDIR/overridden"
+BINDIR=~/bin
+SRCDIR=~/bin/src
+OVRDIR=~/bin/overridden
 
 if [ -z "${PROGS+x}" ]; then
-    PROGS='dirg cgb'
+    PROGS='dirg cgb membw'
 fi
 
 IFS=' '
@@ -14,7 +13,7 @@ for prog in $PROGS; do
     cd "$SRCDIR/$prog" || exit 1
 
     bin_path="$BINDIR/$prog"
-    if [ -e "$bin_path" ] && file -b "$bin_path" | grep -q script; then
+    if [ -r "$bin_path" ] && file -b "$bin_path" | grep -q script; then
         mkdir -p "$OVRDIR"
         (set -x; mv -n "$bin_path" "$OVRDIR/$prog")
     fi
