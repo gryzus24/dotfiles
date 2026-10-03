@@ -17,6 +17,11 @@ Some scripts may be tagged:
   `wayland`     these scripts work only in the presence of a Wayland
                 compositor.
 
+Implicit dependencies
+  * coreutils  - the GNU variant specifically.
+  * dash       - the shell used by most scripts.
+  * util-linux - select binaries.
+
 Scripts in ~/bin listed alphabetically
 ======================================
 
@@ -24,7 +29,6 @@ Scripts in ~/bin listed alphabetically
     Install the best fonts to the ~/.local/share/fonts/Go directory and
     refresh the font cache.
   Dependencies
-    * dash (shell)
     * fontconfig, git
 
 - brightness (see source, specific)
@@ -33,7 +37,6 @@ Scripts in ~/bin listed alphabetically
   Usage
     $ brightness <n>
   Dependencies
-    * dash (shell)
     * python (3.7+)
 
 - buddyinfo-mon
@@ -146,14 +149,12 @@ Scripts in ~/bin listed alphabetically
 - cliphist-wl-copy (wayland)
     Pick an entry from the clipboard history... and copy it!
   Dependencies
-    * dash (shell)
     * cliphist, fuzzel, wl-copy
 
 - colorpicker (wayland)
     Pick the top-left pixel color of the selection, copy it to clipboard
     and print to stdout.
   Dependencies
-    * dash (shell)
     * grim, imagemagick, slurp, wl-copy
 
 - cpu-scaling
@@ -220,7 +221,6 @@ Scripts in ~/bin listed alphabetically
 - hf
     Fuzzy search ~/.bash_history and copy the selection to clipboard.
   Dependencies
-    * dash (shell)
     * fzf, python
     * xclip (on Xorg), wl-copy (on Wayland)
 
@@ -244,13 +244,47 @@ Scripts in ~/bin listed alphabetically
 - lscat
     Recursively iterate over all files in the current working directory,
     print their paths and use the cat command on them.
-  Dependencies
-    * dash (shell)
+
+- membw
+    Measure system-wide memory read/write/copy bandwidth. Fault-in two
+    <array size> arrays (256M if unspecified), run each defined <mode>
+    <loops per mode> times (8 if unspecified), and report an average for
+    each <mode>. Modes available:
+
+      read, read_nt, write, write_nt, memzero,
+      copy, copy_nt, copy_byte, copy_repsb, memcpy.
+
+    If the specified <mode> doesn't perform any copies, only one array
+    will be allocated.
+    If <loops per mode> is set to 0, the program will loop 2^64-1 times.
+
+    Passing the -r <file> option enables multi-threaded operation.
+    The contents of <file> must be a description of the form:
+
+      <[first][last|-][nr_threads|-]<mode> >...
+
+    where [first] and [last] specify the range of CPUs where the <mode>
+    should run affined to. [nr_threads] may be specified to under- or
+    over- subscribe the given CPU affinity range. The '-' may be used
+    to copy the previous value. For example:
+
+      0 3 copy 4-- read 5 7 write 8-2 write
+
+    spawns 4 copy threads on CPUs 0-3, 4 read threads pinned to CPU 4,
+    3 write threads on CPUs 5-7 and additional 2 pinned to CPU 8.
+
+    See the -h text for more information.
+  Usage
+    $ membw [-m <mode>] [-n <loops per mode>] [-r <file>] [-i <interval>]
+            [<array size>[bkmgt]]
+    $ echo '0 3 copy' | membw -n0 -r- 32M
+  Build dependencies
+    * gcc/clang
+  Installation
+    $ PROGS=membw ~/bin/src/install.sh
 
 - net{up,flush}
     Configure a static IP address on the network interface.
-  Dependencies
-    * dash (shell)
 
 - pacilog
     List all explicitly installed pacman packages.
@@ -292,7 +326,6 @@ Scripts in ~/bin listed alphabetically
     Run scrot in "--select" mode and copy the selected image to
     clipboard.
   Dependencies
-    * dash (shell)
     * scrot, xclip
     * xdotool (required when using unclutter)
 
@@ -300,7 +333,6 @@ Scripts in ~/bin listed alphabetically
     Run scrot in "--select --freeze" mode, save the selected image to
     $XDG_PICTURES/Scrots and open it in sxiv.
   Dependencies
-    * dash (shell)
     * scrot, sxiv
     * xdotool (required when using unclutter)
 
@@ -311,8 +343,6 @@ Scripts in ~/bin listed alphabetically
       $ cat <file> | sep <sep>
     Or in Vim command-line mode after visually selecting a few lines:
       :!sep <sep>
-  Dependencies
-    * dash (shell)
 
 - setfreq
     Set CPU frequency scaling range.
@@ -326,15 +356,12 @@ Scripts in ~/bin listed alphabetically
   Usage
     $ setfreq 2400 3600
     $ setfreq 800 3600 1 3
-  Dependencies
-    * dash (shell)
 
 - sway-focus-or-run (see source)
     Focus an already open container or launch a new instance of it.
   Usage
     sway-focus-or-run <command>
   Dependencies
-    * dash (shell)
     * swaymsg
 
 - sway-prop
@@ -348,7 +375,6 @@ Scripts in ~/bin listed alphabetically
     $ sway-prop [all|rect|<key>]
     $ sway-prop rect | grim -g -
   Dependencies
-    * dash (shell)
     * jq, slurp, swaymsg
 
 - touchpad-toggle (specific)
@@ -357,7 +383,6 @@ Scripts in ~/bin listed alphabetically
 - update-mirrorlist (see source)
     Update the /etc/pacman.d/mirrorlist file.
   Dependencies
-    * dash (shell)
     * diff, reflector
 
 - wsort
@@ -376,7 +401,6 @@ Scripts in ~/bin listed alphabetically
     change the vm.swappiness value to 180 (prioritize scanning anonymous
     folios for swap-out as opposed to file-backed folios)
   Dependencies
-    * dash (shell)
     * kernel compiled with CONFIG_ZRAM=m
 
 Bash functions from ~/.bashrc
