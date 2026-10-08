@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
             .link_libcpp = false,
         }),
     });
-    if (optimize != .Debug)
+    if (optimize != .debug)
         exe.lto = .full;
 
     b.installArtifact(exe);

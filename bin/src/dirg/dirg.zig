@@ -12,7 +12,7 @@ pub fn IndexIterator(comptime T: type, findme: T) type {
     return struct {
         buf: []const T,
         i: usize,
-        bits: std.meta.Int(.unsigned, BlockSize),
+        bits: @Int(.unsigned, BlockSize),
 
         const BlockSize = @min(64, 2 * (std.simd.suggestVectorLength(T) orelse 8));
         const Block = @Vector(BlockSize, T);
