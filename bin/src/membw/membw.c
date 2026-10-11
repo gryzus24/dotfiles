@@ -183,7 +183,7 @@ static void do_read_nt(u8 *restrict w __unused, u8 *restrict r, u64 nr_bytes)
 __maybe_noinline
 static void do_write(u8 *restrict w, u8 *restrict r __unused, u64 nr_bytes)
 {
-	__m256i zero = {0};
+	__m256i zero = {};
 	for (u64 i = 0; i < nr_bytes; i += 512) {
 		u8 *dst = w + i;
 		#pragma GCC unroll 16
@@ -194,7 +194,7 @@ static void do_write(u8 *restrict w, u8 *restrict r __unused, u64 nr_bytes)
 __maybe_noinline
 static void do_write_nt(u8 *restrict w, u8 *restrict r __unused, u64 nr_bytes)
 {
-	__m256i zero = {0};
+	__m256i zero = {};
 	for (u64 i = 0; i < nr_bytes; i += 512) {
 		u8 *dst = w + i;
 		#pragma GCC unroll 16
@@ -242,12 +242,17 @@ static void do_copy_repsb(u8 *restrict w, u8 *restrict r, u64 nr_bytes)
 	: "memory");
 }
 
+#define CPU_FMT     "CPU%3u"
+#define MS_FMT      "%4w64u.%03w64u ms"
+#define MBS_FMT     "%5w64u.%03w64u MiB/s"
+#define MIN_MAX_FMT "%5w64u.%03w64u Min %5w64u.%03w64u Max"
+
 static void fprint_header(FILE *fp, u8 *w, u8 *r, u64 nr_bytes)
 {
 	fprintf(fp, "TEST\n");
 	if (r) fprintf(fp, " [%p] read array\n", r);
 	if (w) fprintf(fp, " [%p] write array\n", w);
-	fprintf(fp, " %zu MiB, %zu 4k-pages, %zu bytes\n",
+	fprintf(fp, " %w64u MiB, %w64u 4k-pages, %w64u bytes\n",
 		nr_bytes >> 20, nr_bytes >> 12, nr_bytes);
 }
 
@@ -363,7 +368,7 @@ static void *bw_thread(void *bw_local)
 			pthread_barrier_wait(bwl->thread.barrier);
 			waited_on_barrier = true;
 		}
-		if (print) printf(" %3zu.%03zu ms %5lu.%03zu MiB/s\n",
+		if (print) printf(" " MS_FMT " " MBS_FMT "\n",
 			f_int(delta_ms_f), f_frac(delta_ms_f),
 			f_int(mbs_f),      f_frac(mbs_f));
 
@@ -372,7 +377,7 @@ static void *bw_thread(void *bw_local)
 				u64 ms_avg_f = per_mode_f.ms / loops_per_mode;
 				u64 mbs_avg_f = per_mode_f.mbs / loops_per_mode;
 
-				printf("=%3zu.%03zu ms %5zu.%03zu MiB/s [%zu.%03zu, %zu.%03zu]\n",
+				printf("=" MS_FMT " " MBS_FMT " " MIN_MAX_FMT "\n",
 					f_int(ms_avg_f),           f_frac(ms_avg_f),
 					f_int(mbs_avg_f),          f_frac(mbs_avg_f),
 					f_int(per_mode_f.mbs_min), f_frac(per_mode_f.mbs_min),
@@ -457,7 +462,7 @@ static u32 parse_program(char *c, struct desc *descs, const u32 descs_max)
 
 	u32 desc_idx = 0;
 next_desc:
-	union { struct desc d; u32 work[3]; } u = {0};
+	union { struct desc d; u32 work[3]; } u = {};
 	u32 w = 0;
 	do {
 		while (isws(*c)) c++;
@@ -733,8 +738,7 @@ again:
 				if (seq_atomic(s0, s1)) {
 					t_ms_total += f_int(f.ms);
 
-					printf(" CPU%3u %3zu.%03zu ms %5zu.%03zu MiB/s"
-						" %5zu.%03zu Min %5zu.%03zu Max",
+					printf(" " CPU_FMT " " MS_FMT " " MBS_FMT " " MIN_MAX_FMT,
 						cpu,
 						f_int(f.ms),      f_frac(f.ms),
 						f_int(f.mbs),     f_frac(f.mbs),
