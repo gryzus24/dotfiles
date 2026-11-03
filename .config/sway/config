@@ -88,6 +88,9 @@ bindsym $mod+Shift+j           move down
 bindsym $mod+Shift+k           move up
 bindsym $mod+Shift+l           move right
 
+bindsym $mod+Shift+i           move workspace prev_on_output
+bindsym $mod+Shift+o           move workspace next_on_output
+
 bindsym $mod+e                 layout toggle split
 bindsym $mod+s                 layout stacking
 bindsym $mod+w                 layout tabbed
@@ -227,7 +230,7 @@ exec gsettings set org.gnome.desktop.interface color-scheme prefer-dark
 
 exec wl-paste --watch cliphist store
 exec swayidle -w \
-  timeout 310 'swaylock -f -c 000000' \
+  timeout 310 'swaylock -f -c 141407' \
   timeout 300 'swaymsg "output * power off"' \
        resume 'swaymsg "output * power on"' \
-  before-sleep 'swaylock -f -c 000000'
+  before-sleep 'swaylock -f -c 141407'
