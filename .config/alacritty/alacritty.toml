@@ -5,8 +5,8 @@ TERM = "xterm-256color"
 #import = ["colors.toml"]
 
 [colors.primary]
-foreground = "0xccd0cc"
-background = "0x100c00"
+foreground = "0xb0c8c0"
+background = "0x0c1414"
 
 [colors.vi_mode_cursor]
 cursor = "0xff6c6b"
@@ -25,7 +25,7 @@ style = "Italic"
 
 [font.offset]
 x = -1
-y = 0
+y = 2
 
 [font.glyph_offset]
 x = 0
@@ -168,7 +168,7 @@ padding.y = 6
 dynamic_padding = false
 dynamic_title = true
 opacity = 1.0
-resize_increments = true
+resize_increments = false
 title = "Alacritty"
 
 [window.class]
