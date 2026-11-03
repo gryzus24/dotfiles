@@ -14,7 +14,11 @@ vim.lsp.config('*', {
   }
 })
 
-vim.lsp.enable({'clangd', 'gopls', 'pyright', 'ts_ls', 'zls'})
+vim.lsp.config('jdtls', {
+  root_dir = vim.fn.getcwd()
+})
+
+vim.lsp.enable({'clangd', 'gopls', 'pyright', 'ts_ls', 'zls', 'jdtls'})
 
 vim.api.nvim_create_autocmd('BufWritePre',{
   pattern = {"*.zig", "*.zon"},
@@ -25,14 +29,14 @@ vim.api.nvim_create_autocmd('BufWritePre',{
 
 vim.keymap.set('n', '<space>e', vim.diagnostic.open_float)
 vim.keymap.set('n', '[d', function()
-    vim.diagnostic.jump(
-        {count = -1, severity = {min = vim.diagnostic.severity.INFO}, float = true}
-    )
+  vim.diagnostic.jump(
+    {count = -1, severity = {min = vim.diagnostic.severity.INFO}, float = true}
+  )
 end)
 vim.keymap.set('n', ']d', function()
-    vim.diagnostic.jump(
-        {count = 1, severity = {min = vim.diagnostic.severity.INFO}, float = true}
-    )
+  vim.diagnostic.jump(
+    {count = 1, severity = {min = vim.diagnostic.severity.INFO}, float = true}
+  )
 end)
 vim.keymap.set('n', '<space>q', vim.diagnostic.setqflist)
 

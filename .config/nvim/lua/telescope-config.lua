@@ -11,14 +11,6 @@ telescope.setup({
                 width = 0.9,
             };
         },
-        mappings = {
-            i = {
-                ['<c-d>'] = actions.delete_buffer,
-            },
-            n = {
-                ['dd'] = actions.delete_buffer,
-            },
-        },
     },
     extensions = {
         fzf = {},

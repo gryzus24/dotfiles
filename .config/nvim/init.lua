@@ -247,22 +247,22 @@ function ccolors()
 
     local ign = '#988f81'
 
-    local fg = '#ccd0cc'
-    local bg = '#0c1000'
+    local fg = '#b0c8c0'
+    local bg = '#0c1414'
     local ws = '#282418'
 
     set_hl(0, 'Normal',                {})
 
     -- override
     set_hl(0, 'Directory',             {fg = fg})
-    set_hl(0, 'Identifier',            {fg = fg})
     set_hl(0, '@module',               {fg = fg})
 
     -- yield
-    set_hl(0, 'Constant',              {})
-    set_hl(0, 'Special',               {fg = fg})
-    set_hl(0, 'PreProc',               {})
     set_hl(0, '@label',                {})
+    set_hl(0, 'Constant',              {})
+    set_hl(0, 'Identifier',            {})
+    set_hl(0, 'PreProc',               {})
+    set_hl(0, 'Special',               {})
 
     set_hl(0, 'Function',              {fg = '#5cb9ff', bold = true})
     set_hl(0, '@function.call',        {fg = '#b5c3e2', bold = true})
